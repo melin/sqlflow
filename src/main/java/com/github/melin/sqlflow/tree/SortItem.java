@@ -1,0 +1,105 @@
+package com.github.melin.sqlflow.tree;
+
+import com.github.melin.sqlflow.AstVisitor;
+import com.github.melin.sqlflow.tree.expression.Expression;
+import com.google.common.collect.ImmutableList;
+
+import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
+
+import static com.google.common.base.MoreObjects.toStringHelper;
+
+/**
+ * huaixin 2021/12/18 10:09 PM
+ */
+public class SortItem
+        extends Node {
+    public enum Ordering {
+        ASCENDING, DESCENDING
+    }
+
+    public enum NullOrdering {
+        FIRST, LAST, UNDEFINED
+    }
+
+    private final Expression sortKey;
+    private final Ordering ordering;
+    private final NullOrdering nullOrdering;
+
+    public SortItem(Expression sortKey, Ordering ordering, NullOrdering nullOrdering) {
+        this(Optional.empty(), sortKey, ordering, nullOrdering);
+    }
+
+    public SortItem(NodeLocation location, Expression sortKey, Ordering ordering, NullOrdering nullOrdering) {
+        this(Optional.of(location), sortKey, ordering, nullOrdering);
+    }
+
+    private SortItem(Optional<NodeLocation> location, Expression sortKey, Ordering ordering, NullOrdering nullOrdering) {
+        super(location);
+        this.ordering = ordering;
+        this.sortKey = sortKey;
+        this.nullOrdering = nullOrdering;
+    }
+
+    public Expression getSortKey() {
+        return sortKey;
+    }
+
+    public Ordering getOrdering() {
+        return ordering;
+    }
+
+    public NullOrdering getNullOrdering() {
+        return nullOrdering;
+    }
+
+    @Override
+    public <R, C> R accept(AstVisitor<R, C> visitor, C context) {
+        return visitor.visitSortItem(this, context);
+    }
+
+    @Override
+    public List<? extends Node> getChildren() {
+        return ImmutableList.of(sortKey);
+    }
+
+    @Override
+    public String toString() {
+        return toStringHelper(this)
+                .add("sortKey", sortKey)
+                .add("ordering", ordering)
+                .add("nullOrdering", nullOrdering)
+                .toString();
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+
+        SortItem sortItem = (SortItem) o;
+        return Objects.equals(sortKey, sortItem.sortKey) &&
+                (ordering == sortItem.ordering) &&
+                (nullOrdering == sortItem.nullOrdering);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(sortKey, ordering, nullOrdering);
+    }
+
+    @Override
+    public boolean shallowEquals(Node other) {
+        if (!sameClass(this, other)) {
+            return false;
+        }
+
+        SortItem otherItem = (SortItem) other;
+        return ordering == otherItem.ordering && nullOrdering == otherItem.nullOrdering;
+    }
+}
