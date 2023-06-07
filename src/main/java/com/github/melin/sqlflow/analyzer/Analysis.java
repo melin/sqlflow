@@ -3,7 +3,6 @@ package com.github.melin.sqlflow.analyzer;
 import com.github.melin.sqlflow.metadata.QualifiedObjectName;
 import com.github.melin.sqlflow.tree.*;
 import com.github.melin.sqlflow.tree.expression.*;
-import com.github.melin.sqlflow.tree.expression.*;
 import com.github.melin.sqlflow.tree.join.Join;
 import com.github.melin.sqlflow.tree.relation.QuerySpecification;
 import com.github.melin.sqlflow.tree.relation.Table;
@@ -11,7 +10,6 @@ import com.github.melin.sqlflow.tree.statement.Query;
 import com.github.melin.sqlflow.tree.statement.Statement;
 import com.github.melin.sqlflow.tree.window.WindowFrame;
 import com.github.melin.sqlflow.type.Type;
-import com.github.melin.sqlflow.tree.*;
 import com.google.common.collect.*;
 
 import javax.annotation.Nullable;
@@ -434,10 +432,6 @@ public class Analysis {
             return columnName;
         }
 
-        public ColumnDetail getColumnDetail() {
-            return new ColumnDetail(tableName.getCatalogName(), tableName.getSchemaName(), tableName.getObjectName(), columnName);
-        }
-
         @Override
         public int hashCode() {
             return Objects.hash(tableName, columnName);
@@ -453,56 +447,6 @@ public class Analysis {
             }
             SourceColumn entry = (SourceColumn) obj;
             return Objects.equals(tableName, entry.tableName) &&
-                    Objects.equals(columnName, entry.columnName);
-        }
-    }
-
-    public static class ColumnDetail {
-        private final String catalog;
-        private final String schema;
-        private final String table;
-        private final String columnName;
-
-        public ColumnDetail(String catalog, String schema, String table, String columnName) {
-            this.catalog = requireNonNull(catalog, "catalog is null");
-            this.schema = requireNonNull(schema, "schema is null");
-            this.table = requireNonNull(table, "table is null");
-            this.columnName = requireNonNull(columnName, "columnName is null");
-        }
-
-        public String getCatalog() {
-            return catalog;
-        }
-
-        public String getSchema() {
-            return schema;
-        }
-
-        public String getTable() {
-            return table;
-        }
-
-        public String getColumnName() {
-            return columnName;
-        }
-
-        @Override
-        public int hashCode() {
-            return Objects.hash(catalog, schema, table, columnName);
-        }
-
-        @Override
-        public boolean equals(Object obj) {
-            if (obj == this) {
-                return true;
-            }
-            if ((obj == null) || (getClass() != obj.getClass())) {
-                return false;
-            }
-            ColumnDetail entry = (ColumnDetail) obj;
-            return Objects.equals(catalog, entry.catalog) &&
-                    Objects.equals(schema, entry.schema) &&
-                    Objects.equals(table, entry.table) &&
                     Objects.equals(columnName, entry.columnName);
         }
     }
