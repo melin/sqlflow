@@ -1,16 +1,3 @@
-/*
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
 package com.github.melin.sqlflow.analyzer;
 
 import com.github.melin.sqlflow.tree.QualifiedName;
@@ -46,7 +33,6 @@ public class RelationType {
         requireNonNull(fields, "fields is null");
         this.allFields = ImmutableList.copyOf(fields);
         this.visibleFields = fields.stream()
-                .filter(field -> !field.isHidden())
                 .collect(toImmutableList());
 
         int index = 0;
@@ -160,20 +146,16 @@ public class RelationType {
                 fieldsBuilder.add(Field.newQualified(
                         QualifiedName.of(relationAlias),
                         columnAlias,
-                        field.getType(),
-                        field.isHidden(),
                         field.getOriginTable(),
                         field.getOriginColumnName(),
                         field.isAliased()));
-            } else if (!field.isHidden()) {
+            } else {
                 // hidden fields are not exposed when there are column aliases
                 columnAlias = Optional.of(columnAliases.get(aliasIndex));
                 aliasIndex++;
                 fieldsBuilder.add(Field.newQualified(
                         QualifiedName.of(relationAlias),
                         columnAlias,
-                        field.getType(),
-                        false,
                         field.getOriginTable(),
                         field.getOriginColumnName(),
                         field.isAliased()));

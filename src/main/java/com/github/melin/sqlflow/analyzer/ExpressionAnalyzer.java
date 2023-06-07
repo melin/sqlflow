@@ -153,12 +153,7 @@ public class ExpressionAnalyzer {
     }
 
     public Type setExpressionType(Expression expression, Type type) {
-        requireNonNull(expression, "expression cannot be null");
-        requireNonNull(type, "type cannot be null");
-
-        expressionTypes.put(NodeRef.of(expression), type);
-
-        return type;
+        return UNKNOWN;
     }
 
     private Type getExpressionType(Expression expression) {
@@ -1074,13 +1069,11 @@ public class ExpressionAnalyzer {
         ImmutableList.Builder<RowType.Field> fields = ImmutableList.builder();
         for (int i = 0; i < queryScope.getRelationType().getAllFieldCount(); i++) {
             Field field = queryScope.getRelationType().getFieldByIndex(i);
-            if (!field.isHidden()) {
                 if (field.getName().isPresent()) {
                     fields.add(RowType.field(field.getName().get(), field.getType()));
                 } else {
                     fields.add(RowType.field(field.getType()));
                 }
-            }
         }
 
         sourceFields.addAll(queryScope.getRelationType().getVisibleFields());

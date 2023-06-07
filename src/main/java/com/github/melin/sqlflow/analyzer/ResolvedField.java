@@ -26,10 +26,6 @@ public class ResolvedField {
         return FieldId.from(this);
     }
 
-    public Type getType() {
-        return field.getType();
-    }
-
     public Scope getScope() {
         return scope;
     }

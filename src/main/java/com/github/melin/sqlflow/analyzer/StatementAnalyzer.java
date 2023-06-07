@@ -37,9 +37,6 @@ import static com.github.melin.sqlflow.analyzer.Scope.BasisType.TABLE;
 import static com.github.melin.sqlflow.analyzer.SemanticExceptions.semanticException;
 import static com.github.melin.sqlflow.metadata.MetadataUtil.createQualifiedObjectName;
 import static com.github.melin.sqlflow.tree.literal.BooleanLiteral.TRUE_LITERAL;
-import static com.github.melin.sqlflow.type.BigintType.BIGINT;
-import static com.github.melin.sqlflow.type.BooleanType.BOOLEAN;
-import static com.github.melin.sqlflow.type.UnknownType.UNKNOWN;
 import static com.github.melin.sqlflow.util.AstUtils.preOrder;
 import static com.github.melin.sqlflow.util.NodeUtils.getSortItemsFromOrderBy;
 import static com.google.common.base.Preconditions.*;
@@ -125,13 +122,10 @@ public class StatementAnalyzer {
                 throw new ParsingException("table " + targetTable + " metadata not exists");
             }
 
-            List<ColumnSchema> columns = tableSchema.get().getColumns().stream().filter(column -> !column.isHidden()).collect(Collectors.toList());
-
-            List<String> tableColumns = columns.stream().map(ColumnSchema::getName).collect(toImmutableList());
-
+            List<String> tableColumns = tableSchema.get().getColumns();
             List<String> insertColumns;
             if (insert.getColumns().isPresent()) {
-                insertColumns = insert.getColumns().get().stream().map(Identifier::getValue).map(column -> column.toLowerCase(ENGLISH)).collect(toImmutableList());
+                insertColumns = insert.getColumns().get().stream().map(Identifier::getValue).collect(toImmutableList());
 
                 Set<String> columnNames = new HashSet<>();
                 for (String insertColumn : insertColumns) {
@@ -146,9 +140,7 @@ public class StatementAnalyzer {
                 insertColumns = tableColumns;
             }
 
-            List<Type> tableTypes = insertColumns.stream().map(insertColumn -> tableSchema.get().getColumn(insertColumn).getType()).collect(toImmutableList());
-
-            Stream<Column> columnStream = Streams.zip(insertColumns.stream(), tableTypes.stream().map(Type::toString), Column::new);
+            Stream<String> columnStream = insertColumns.stream();
 
             analysis.setUpdateType("INSERT");
             analysis.setUpdateTarget(
@@ -188,11 +180,8 @@ public class StatementAnalyzer {
 
                 int aliasPosition = 0;
                 for (Field field : queryScope.getRelationType().getVisibleFields()) {
-                    if (field.getType().equals(UNKNOWN)) {
-                        throw semanticException(node, "Column type is unknown at position %s", queryScope.getRelationType().indexOf(field) + 1);
-                    }
                     String columnName = node.getColumnAliases().get().get(aliasPosition).getValue();
-                    outputColumns.add(new OutputColumn(new Column(columnName, field.getType().toString()), analysis.getSourceColumns(field)));
+                    outputColumns.add(new OutputColumn(columnName, analysis.getSourceColumns(field)));
                     aliasPosition++;
                 }
             } else {
@@ -275,10 +264,10 @@ public class StatementAnalyzer {
         private List<Field> analyzeTableOutputFields(com.github.melin.sqlflow.tree.relation.Table table, QualifiedObjectName tableName, SchemaTable schemaTable) {
             // TODO: discover columns lazily based on where they are needed (to support connectors that can't enumerate all tables)
             ImmutableList.Builder<Field> fields = ImmutableList.builder();
-            for (ColumnSchema column : schemaTable.getColumns()) {
-                Field field = Field.newQualified(table.getName(), Optional.of(column.getName()), column.getType(), column.isHidden(), Optional.of(tableName), Optional.of(column.getName()), false);
+            for (String column : schemaTable.getColumns()) {
+                Field field = Field.newQualified(table.getName(), Optional.of(column), Optional.of(tableName), Optional.of(column), false);
                 fields.add(field);
-                analysis.addSourceColumns(field, ImmutableSet.of(new SourceColumn(tableName, column.getName())));
+                analysis.addSourceColumns(field, ImmutableSet.of(new SourceColumn(tableName, column)));
             }
             return fields.build();
         }
@@ -299,22 +288,18 @@ public class StatementAnalyzer {
                 Iterator<Identifier> aliases = columnNames.get().iterator();
                 for (int i = 0; i < queryDescriptor.getAllFieldCount(); i++) {
                     Field inputField = queryDescriptor.getFieldByIndex(i);
-                    if (!inputField.isHidden()) {
-                        Field field = Field.newQualified(QualifiedName.of(table.getName().getSuffix()), Optional.of(aliases.next().getValue()), inputField.getType(), false, inputField.getOriginTable(), inputField.getOriginColumnName(), inputField.isAliased());
-                        fieldBuilder.add(field);
-                        analysis.addSourceColumns(field, analysis.getSourceColumns(inputField));
-                    }
+                    Field field = Field.newQualified(QualifiedName.of(table.getName().getSuffix()), Optional.of(aliases.next().getValue()), inputField.getOriginTable(), inputField.getOriginColumnName(), inputField.isAliased());
+                    fieldBuilder.add(field);
+                    analysis.addSourceColumns(field, analysis.getSourceColumns(inputField));
                 }
                 fields = fieldBuilder.build();
             } else {
                 ImmutableList.Builder<Field> fieldBuilder = ImmutableList.builder();
                 for (int i = 0; i < queryDescriptor.getAllFieldCount(); i++) {
                     Field inputField = queryDescriptor.getFieldByIndex(i);
-                    if (!inputField.isHidden()) {
-                        Field field = Field.newQualified(QualifiedName.of(table.getName().getSuffix()), inputField.getName(), inputField.getType(), false, inputField.getOriginTable(), inputField.getOriginColumnName(), inputField.isAliased());
-                        fieldBuilder.add(field);
-                        analysis.addSourceColumns(field, analysis.getSourceColumns(inputField));
-                    }
+                    Field field = Field.newQualified(QualifiedName.of(table.getName().getSuffix()), inputField.getName(), inputField.getOriginTable(), inputField.getOriginColumnName(), inputField.isAliased());
+                    fieldBuilder.add(field);
+                    analysis.addSourceColumns(field, analysis.getSourceColumns(inputField));
                 }
                 fields = fieldBuilder.build();
             }
@@ -356,7 +341,7 @@ public class StatementAnalyzer {
             // This is needed in case the underlying table(s) changed and the query in the view now produces types that
             // are implicitly coercible to the declared view types.
             List<Field> outputFields = columns.stream().map(column -> Field.newQualified(table.getName(),
-                    Optional.of(column.getName()), column.getType(), false, Optional.of(name),
+                    Optional.of(column.getName()), Optional.of(name),
                     Optional.of(column.getName()), false)).collect(toImmutableList());
 
             outputFields.forEach(field -> analysis.addSourceColumns(field, ImmutableSet.of(new SourceColumn(name, field.getName().get()))));
@@ -471,7 +456,7 @@ public class StatementAnalyzer {
 
             Optional<Field> ordinalityField = Optional.empty();
             if (node.isWithOrdinality()) {
-                ordinalityField = Optional.of(Field.newUnqualified(Optional.empty(), BIGINT));
+                ordinalityField = Optional.of(Field.newUnqualified(Optional.empty()));
             }
 
             ordinalityField.ifPresent(outputFields::add);
@@ -723,33 +708,16 @@ public class StatementAnalyzer {
                     .map(relation -> process(relation, scope).getRelationType().withOnlyVisibleFields())
                     .collect(toImmutableList());
 
-            String setOperationName = node.getClass().getSimpleName().toUpperCase(ENGLISH);
-            Type[] outputFieldTypes = childrenTypes.get(0).getVisibleFields().stream()
-                    .map(Field::getType)
-                    .toArray(Type[]::new);
+            Field[] outputFields = childrenTypes.get(0).getVisibleFields().stream()
+                    .toArray(Field[]::new);
 
-            if (node instanceof Intersect || node instanceof Except || node instanceof Union && node.isDistinct()) {
-                for (Type type : outputFieldTypes) {
-                    if (!type.isComparable()) {
-                        StringBuilder message = new StringBuilder(format("Type %s is not comparable and therefore cannot be used in ", type));
-                        message.append(setOperationName);
-                        if (node instanceof Union) {
-                            message.append(" DISTINCT");
-                        }
-                        throw semanticException(node, message.toString());
-                    }
-                }
-            }
-
-            Field[] outputDescriptorFields = new Field[outputFieldTypes.length];
+            Field[] outputDescriptorFields = new Field[outputFields.length];
             RelationType firstDescriptor = childrenTypes.get(0);
-            for (int i = 0; i < outputFieldTypes.length; i++) {
+            for (int i = 0; i < outputFields.length; i++) {
                 Field oldField = firstDescriptor.getFieldByIndex(i);
                 outputDescriptorFields[i] = new Field(
                         oldField.getRelationAlias(),
                         oldField.getName(),
-                        outputFieldTypes[i],
-                        oldField.isHidden(),
                         oldField.getOriginTable(),
                         oldField.getOriginColumnName(),
                         oldField.isAliased());
@@ -816,13 +784,7 @@ public class StatementAnalyzer {
 
                 // Need to register coercions in case when join criteria requires coercion (e.g. join on char(1) = char(2))
                 // Correlations are only currently support in the join criteria for INNER joins
-                ExpressionAnalysis expressionAnalysis = ExpressionAnalyzer.analyzeExpression(output, analysis, metadataService, sqlParser, expression);
-                Type clauseType = expressionAnalysis.getType(expression);
-                if (!clauseType.equals(BOOLEAN)) {
-                    if (!clauseType.equals(UNKNOWN)) {
-                        throw semanticException(expression, "JOIN ON clause must evaluate to a boolean: actual type %s", clauseType);
-                    }
-                }
+                ExpressionAnalyzer.analyzeExpression(output, analysis, metadataService, sqlParser, expression);
 
                 analysis.setJoinCriteria(node, expression);
             } else {
@@ -854,7 +816,7 @@ public class StatementAnalyzer {
                     throw semanticException(column, "Column '%s' is missing from right side of join", column.getValue());
                 }
 
-                joinFields.add(Field.newUnqualified(column.getValue(), UNKNOWN));
+                joinFields.add(Field.newUnqualified(column.getValue()));
 
                 leftJoinFields.add(leftField.get().getField());
                 rightJoinFields.add(rightField.get().getField());
@@ -1117,12 +1079,7 @@ public class StatementAnalyzer {
                     throw semanticException(windowExpressions.get(0), "HAVING clause cannot contain window functions or row pattern measures");
                 }
 
-                ExpressionAnalysis expressionAnalysis = ExpressionAnalyzer.analyzeExpression(scope, analysis, metadataService, sqlParser, predicate);
-
-                Type predicateType = expressionAnalysis.getType(predicate);
-                if (!predicateType.equals(BOOLEAN) && !predicateType.equals(UNKNOWN)) {
-                    throw semanticException(predicate, "HAVING clause must evaluate to a boolean: actual type %s", predicateType);
-                }
+                ExpressionAnalyzer.analyzeExpression(scope, analysis, metadataService, sqlParser, predicate);
 
                 analysis.setHaving(node, predicate);
             }
@@ -1359,8 +1316,8 @@ public class StatementAnalyzer {
                     alias = Optional.of((allColumns.getAliases().get(i)).getValue());
                 }
 
-                Field newField = new Field(field.getRelationAlias(), alias, field.getType(),
-                        false, field.getOriginTable(), field.getOriginColumnName(), !allColumns.getAliases().isEmpty() || field.isAliased());
+                Field newField = new Field(field.getRelationAlias(), alias, field.getOriginTable(),
+                        field.getOriginColumnName(), !allColumns.getAliases().isEmpty() || field.isAliased());
                 itemOutputFieldBuilder.add(newField);
                 analysis.addSourceColumns(newField, analysis.getSourceColumns(field));
             }
@@ -1388,16 +1345,11 @@ public class StatementAnalyzer {
                 ExpressionAnalyzer.analyzeExpression(scope, analysis, metadataService, sqlParser, outputExpression);
                 unfoldedExpressionsBuilder.add(outputExpression);
 
-                Type outputExpressionType = type.getTypeParameters().get(i);
-                if (node.getSelect().isDistinct() && !(outputExpressionType.isComparable())) {
-                    throw semanticException(node.getSelect(), "DISTINCT can only be applied to comparable types (actual: %s)", type.getTypeParameters().get(i));
-                }
-
                 Optional<String> name = ((RowType) type).getFields().get(i).getName();
                 if (!allColumns.getAliases().isEmpty()) {
                     name = Optional.of((allColumns.getAliases().get(i)).getValue());
                 }
-                itemOutputFieldBuilder.add(Field.newUnqualified(name, outputExpressionType));
+                itemOutputFieldBuilder.add(Field.newUnqualified(name));
             }
             selectExpressionBuilder.add(new SelectExpression(expression, Optional.of(unfoldedExpressionsBuilder.build())));
             analysis.setSelectAllResultFields(allColumns, itemOutputFieldBuilder.build());
@@ -1430,7 +1382,7 @@ public class StatementAnalyzer {
                             name = field.getName();
                         }
 
-                        Field newField = Field.newUnqualified(name, field.getType(), field.getOriginTable(), field.getOriginColumnName(), false);
+                        Field newField = Field.newUnqualified(name, field.getOriginTable(), field.getOriginColumnName(), false);
                         analysis.addSourceColumns(newField, analysis.getSourceColumns(field));
                         outputFields.add(newField);
                     }
@@ -1464,7 +1416,7 @@ public class StatementAnalyzer {
                         }
                     }
 
-                    Field newField = Field.newUnqualified(field.map(Identifier::getValue), analysis.getType(expression), originTable, originColumn, column.getAlias().isPresent()); // TODO don't use analysis as a side-channel. Use outputExpressions to look up the type
+                    Field newField = Field.newUnqualified(field.map(Identifier::getValue), originTable, originColumn, column.getAlias().isPresent()); // TODO don't use analysis as a side-channel. Use outputExpressions to look up the type
                     if (originTable.isPresent()) {
                         analysis.addSourceColumns(newField, ImmutableSet.of(new SourceColumn(originTable.get(), originColumn.get())));
                     } else {
@@ -1483,14 +1435,6 @@ public class StatementAnalyzer {
             Analyzer.verifyNoAggregateWindowOrGroupingFunctions(metadataService, predicate, "WHERE clause");
 
             ExpressionAnalysis expressionAnalysis = ExpressionAnalyzer.analyzeExpression(scope, analysis, metadataService, sqlParser, predicate);
-
-            Type predicateType = expressionAnalysis.getType(predicate);
-            if (!predicateType.equals(BOOLEAN)) {
-                if (!predicateType.equals(UNKNOWN)) {
-                    throw semanticException(predicate, "WHERE clause must evaluate to a boolean: actual type %s", predicateType);
-                }
-            }
-
             expressionAnalysis.getColumnReferences().values().forEach(resolvedField -> {
                 analysis.setWhere(resolvedField.getField(), predicate);
             });
@@ -1553,7 +1497,7 @@ public class StatementAnalyzer {
         }
 
         private OutputColumn createOutputColumn(Field field) {
-            return new OutputColumn(new Column(field.getName().get(), field.getType().toString()), analysis.getSourceColumns(field));
+            return new OutputColumn(field.getName().get(), analysis.getSourceColumns(field));
         }
     }
 

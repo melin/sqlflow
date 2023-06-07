@@ -3,7 +3,6 @@ package com.github.melin.sqlflow.parser.presto;
 import com.github.melin.sqlflow.analyzer.Analysis;
 import com.github.melin.sqlflow.analyzer.OutputColumn;
 import com.github.melin.sqlflow.analyzer.StatementAnalyzer;
-import com.github.melin.sqlflow.metadata.Column;
 import com.github.melin.sqlflow.metadata.QualifiedObjectName;
 import com.github.melin.sqlflow.parser.AbstractSqlLineageTest;
 import com.github.melin.sqlflow.parser.SqlParser;
@@ -34,10 +33,10 @@ public class PrestoSqlLineageTest extends AbstractSqlLineageTest {
 
         //System.out.println(MapperUtils.toJSONString(analysis.getTarget().get()));
 
-        assertLineage(analysis, new OutputColumn(new Column("name", "varchar"), ImmutableSet.of(
+        assertLineage(analysis, new OutputColumn("name", ImmutableSet.of(
                 new Analysis.SourceColumn(QualifiedObjectName.valueOf("default.bigdata.test"), "col1"),
                 new Analysis.SourceColumn(QualifiedObjectName.valueOf("default.bigdata.test"), "col2")
-        )), new OutputColumn(new Column("row_num", "bigint"), ImmutableSet.of(
+        )), new OutputColumn("row_num", ImmutableSet.of(
                 new Analysis.SourceColumn(QualifiedObjectName.valueOf("default.bigdata.test"), "row_num")
         )));
     }

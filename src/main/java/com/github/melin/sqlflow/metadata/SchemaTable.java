@@ -7,9 +7,9 @@ import static com.google.common.collect.MoreCollectors.toOptional;
 public final class SchemaTable {
     private final String tableName;
 
-    private List<ColumnSchema> columns;
+    private List<String> columns;
 
-    public SchemaTable(String tableName, List<ColumnSchema> columns) {
+    public SchemaTable(String tableName, List<String> columns) {
         this.tableName = tableName;
         this.columns = columns;
     }
@@ -18,17 +18,17 @@ public final class SchemaTable {
         return tableName;
     }
 
-    public List<ColumnSchema> getColumns() {
+    public List<String> getColumns() {
         return columns;
     }
 
-    public void setColumns(List<ColumnSchema> columns) {
+    public void setColumns(List<String> columns) {
         this.columns = columns;
     }
 
-    public ColumnSchema getColumn(String name) {
+    public String getColumn(String name) {
         return columns.stream()
-                .filter(columnMetadata -> columnMetadata.getName().equals(name))
+                .filter(column -> column.equals(name))
                 .collect(toOptional())
                 .orElseThrow(() -> new IllegalArgumentException("Invalid column name: " + name));
     }

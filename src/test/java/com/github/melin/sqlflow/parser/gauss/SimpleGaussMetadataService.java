@@ -2,8 +2,6 @@ package com.github.melin.sqlflow.parser.gauss;
 
 import com.github.melin.sqlflow.metadata.*;
 import com.github.melin.sqlflow.tree.QualifiedName;
-import com.github.melin.sqlflow.type.BigintType;
-import com.github.melin.sqlflow.type.VarcharType;
 import com.google.common.collect.Lists;
 
 import java.util.List;
@@ -31,18 +29,18 @@ public class SimpleGaussMetadataService implements MetadataService {
     @Override
     public Optional<SchemaTable> getTableSchema(QualifiedObjectName table) {
         if (table.getObjectName().equals("test")) {
-            List<ColumnSchema> columns = Lists.newArrayList();
-            columns.add(new ColumnSchema("col1", VarcharType.VARCHAR, false));
-            columns.add(new ColumnSchema("col2", VarcharType.VARCHAR, false));
-            columns.add(new ColumnSchema("type", VarcharType.VARCHAR, false));
-            columns.add(new ColumnSchema("row_num", BigintType.BIGINT, false));
-            columns.add(new ColumnSchema("ds", VarcharType.VARCHAR, false));
+            List<String> columns = Lists.newArrayList();
+            columns.add("col1");
+            columns.add("col2");
+            columns.add("type");
+            columns.add("row_num");
+            columns.add("ds");
 
             return Optional.of(new SchemaTable("test", columns));
         } else if (table.getObjectName().equals("demo")) {
-            List<ColumnSchema> columns = Lists.newArrayList();
-            columns.add(new ColumnSchema("name", VarcharType.VARCHAR, false));
-            columns.add(new ColumnSchema("row_num", BigintType.BIGINT, false));
+            List<String> columns = Lists.newArrayList();
+            columns.add("name");
+            columns.add("row_num");
 
             return Optional.of(new SchemaTable("demo", columns));
         }
