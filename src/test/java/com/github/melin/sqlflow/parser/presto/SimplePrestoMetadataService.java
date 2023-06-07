@@ -12,7 +12,7 @@ import java.util.Optional;
 /**
  * huaixin 2021/12/25 6:13 PM
  */
-public class SimplePrestoMetadata implements Metadata {
+public class SimplePrestoMetadataService implements MetadataService {
     @Override
     public Optional<String> getSchema() {
         return Optional.of("bigdata");

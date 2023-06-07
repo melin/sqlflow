@@ -2,12 +2,11 @@ package com.github.melin.sqlflow.analyzer;
 
 import com.github.melin.sqlflow.analyzer.Analysis.ResolvedWindow;
 import com.github.melin.sqlflow.function.OperatorType;
-import com.github.melin.sqlflow.metadata.Metadata;
+import com.github.melin.sqlflow.metadata.MetadataService;
 import com.github.melin.sqlflow.metadata.QualifiedObjectName;
 import com.github.melin.sqlflow.parser.SqlParser;
 import com.github.melin.sqlflow.tree.*;
 import com.github.melin.sqlflow.tree.expression.*;
-import com.github.melin.sqlflow.tree.literal.*;
 import com.github.melin.sqlflow.tree.literal.*;
 import com.github.melin.sqlflow.tree.window.FrameBound;
 import com.github.melin.sqlflow.tree.window.MeasureDefinition;
@@ -17,8 +16,6 @@ import com.github.melin.sqlflow.type.CharType;
 import com.github.melin.sqlflow.type.RowType;
 import com.github.melin.sqlflow.type.Type;
 import com.github.melin.sqlflow.type.VarcharType;
-import com.github.melin.sqlflow.tree.*;
-import com.github.melin.sqlflow.tree.expression.*;
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Multimap;
@@ -66,7 +63,7 @@ public class ExpressionAnalyzer {
 
     private final Analysis analysis;
 
-    private final Metadata metadata;
+    private final MetadataService metadataService;
 
     private final SqlParser sqlParser;
 
@@ -129,8 +126,8 @@ public class ExpressionAnalyzer {
         return unmodifiableSet(windowFunctions);
     }
 
-    private ExpressionAnalyzer(Analysis analysis, Metadata metadata, SqlParser sqlParser) {
-        this(analysis, metadata, sqlParser,
+    private ExpressionAnalyzer(Analysis analysis, MetadataService metadataService, SqlParser sqlParser) {
+        this(analysis, metadataService, sqlParser,
                 analysis.getParameters(),
                 analysis::getType,
                 analysis::getWindow);
@@ -138,13 +135,13 @@ public class ExpressionAnalyzer {
 
     ExpressionAnalyzer(
             Analysis analysis,
-            Metadata metadata,
+            MetadataService metadataService,
             SqlParser sqlParser,
             Map<NodeRef<Parameter>, Expression> parameters,
             Function<Expression, Type> getPreanalyzedType,
             Function<Node, Analysis.ResolvedWindow> getResolvedWindow) {
         this.analysis = requireNonNull(analysis, "analysis is null");
-        this.metadata = requireNonNull(metadata, "analysis is null");
+        this.metadataService = requireNonNull(metadataService, "analysis is null");
         this.sqlParser = requireNonNull(sqlParser, "sqlParser is null");
         this.parameters = requireNonNull(parameters, "parameters is null");
         this.getPreanalyzedType = requireNonNull(getPreanalyzedType, "getPreanalyzedType is null");
@@ -616,7 +613,7 @@ public class ExpressionAnalyzer {
             for (Expression argument : arguments) {
                 if (argument instanceof LambdaExpression || argument instanceof BindExpression) {
                     ExpressionAnalyzer innerExpressionAnalyzer = new ExpressionAnalyzer(
-                            analysis, metadata, sqlParser,
+                            analysis, metadataService, sqlParser,
                             parameters,
                             getPreanalyzedType,
                             getResolvedWindow);
@@ -1068,7 +1065,7 @@ public class ExpressionAnalyzer {
         if (context.getContext().isInLambda()) {
             throw semanticException(node, "Lambda expression cannot contain subqueries");
         }
-        StatementAnalyzer analyzer = new StatementAnalyzer(analysis, metadata, sqlParser);
+        StatementAnalyzer analyzer = new StatementAnalyzer(analysis, metadataService, sqlParser);
         Scope subqueryScope = Scope.builder()
                 .withParent(context.getContext().getScope())
                 .build();
@@ -1093,10 +1090,10 @@ public class ExpressionAnalyzer {
     public static ExpressionAnalysis analyzeExpression(
             Scope scope,
             Analysis analysis,
-            Metadata metadata,
+            MetadataService metadataService,
             SqlParser sqlParser,
             Expression expression) {
-        ExpressionAnalyzer analyzer = new ExpressionAnalyzer(analysis, metadata, sqlParser);
+        ExpressionAnalyzer analyzer = new ExpressionAnalyzer(analysis, metadataService, sqlParser);
         analyzer.analyze(expression, scope);
 
         updateAnalysis(analysis, analyzer);
@@ -1121,11 +1118,11 @@ public class ExpressionAnalyzer {
                 analyzer.getWindowFunctions());
     }
 
-    public static ExpressionAnalysis analyzeExpressions(Metadata metadata, SqlParser sqlParser,
+    public static ExpressionAnalysis analyzeExpressions(MetadataService metadataService, SqlParser sqlParser,
                                                         Iterable<Expression> expressions,
                                                         Map<NodeRef<Parameter>, Expression> parameters) {
         Analysis analysis = new Analysis(null, parameters);
-        ExpressionAnalyzer analyzer = new ExpressionAnalyzer(analysis, metadata, sqlParser);
+        ExpressionAnalyzer analyzer = new ExpressionAnalyzer(analysis, metadataService, sqlParser);
         for (Expression expression : expressions) {
             analyzer.analyze(
                     expression,
@@ -1149,12 +1146,12 @@ public class ExpressionAnalyzer {
     public static ExpressionAnalysis analyzeWindow(
             Scope scope,
             Analysis analysis,
-            Metadata metadata,
+            MetadataService metadataService,
             SqlParser sqlParser,
             CorrelationSupport correlationSupport,
             Analysis.ResolvedWindow window,
             Node originalNode) {
-        ExpressionAnalyzer analyzer = new ExpressionAnalyzer(analysis, metadata, sqlParser);
+        ExpressionAnalyzer analyzer = new ExpressionAnalyzer(analysis, metadataService, sqlParser);
         analyzer.analyzeWindow(window, scope, originalNode, correlationSupport);
 
         updateAnalysis(analysis, analyzer);

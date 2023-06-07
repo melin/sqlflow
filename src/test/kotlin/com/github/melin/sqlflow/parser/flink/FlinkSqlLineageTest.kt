@@ -60,7 +60,8 @@ class FlinkSqlLineageTest {
         """.trimIndent()
         val statement = SQL_PARSER.createStatement(sql)
         val analysis = Analysis(statement, emptyMap())
-        val statementAnalyzer = StatementAnalyzer(analysis, SimpleFlinkMetadata(), SQL_PARSER)
+        val statementAnalyzer = StatementAnalyzer(analysis,
+            SimpleFlinkMetadataService(), SQL_PARSER)
         statementAnalyzer.analyze(statement, Optional.empty())
 
         System.out.println(MapperUtils.toJSONString(analysis.getTarget().get()));

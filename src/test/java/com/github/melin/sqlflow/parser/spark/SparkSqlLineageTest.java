@@ -28,7 +28,7 @@ public class SparkSqlLineageTest extends AbstractSqlLineageTest {
         Statement statement = SQL_PARSER.createStatement(sql);
 
         Analysis analysis = new Analysis(statement, emptyMap());
-        StatementAnalyzer statementAnalyzer = new StatementAnalyzer(analysis, new SimpleSparkMetadata(), SQL_PARSER);
+        StatementAnalyzer statementAnalyzer = new StatementAnalyzer(analysis, new SimpleSparkMetadataService(), SQL_PARSER);
         
         statementAnalyzer.analyze(statement, Optional.empty());
 

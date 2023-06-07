@@ -1,11 +1,10 @@
 package com.github.melin.sqlflow.analyzer;
 
 import com.github.melin.sqlflow.DefaultExpressionTraversalVisitor;
-import com.github.melin.sqlflow.metadata.Metadata;
+import com.github.melin.sqlflow.metadata.MetadataService;
 import com.github.melin.sqlflow.tree.Node;
 import com.github.melin.sqlflow.tree.NodeLocation;
 import com.github.melin.sqlflow.tree.QualifiedName;
-import com.github.melin.sqlflow.tree.expression.*;
 import com.github.melin.sqlflow.tree.expression.*;
 import com.google.common.collect.ImmutableList;
 
@@ -22,8 +21,8 @@ public final class ExpressionTreeUtils {
     private ExpressionTreeUtils() {
     }
 
-    static List<FunctionCall> extractAggregateFunctions(Iterable<? extends Node> nodes, Metadata metadata) {
-        return extractExpressions(nodes, FunctionCall.class, function -> isAggregation(function, metadata));
+    static List<FunctionCall> extractAggregateFunctions(Iterable<? extends Node> nodes, MetadataService metadataService) {
+        return extractExpressions(nodes, FunctionCall.class, function -> isAggregation(function, metadataService));
     }
 
     static List<Expression> extractWindowExpressions(Iterable<? extends Node> nodes) {
@@ -47,8 +46,8 @@ public final class ExpressionTreeUtils {
         return extractExpressions(nodes, clazz, alwaysTrue());
     }
 
-    private static boolean isAggregation(FunctionCall functionCall, Metadata metadata) {
-        return ((metadata.isAggregationFunction(functionCall.getName()) || functionCall.getFilter().isPresent())
+    private static boolean isAggregation(FunctionCall functionCall, MetadataService metadataService) {
+        return ((metadataService.isAggregationFunction(functionCall.getName()) || functionCall.getFilter().isPresent())
                 && functionCall.getWindow() == null)
                 || functionCall.getOrderBy().isPresent();
     }

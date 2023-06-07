@@ -7,7 +7,7 @@ import java.util.Optional;
 /**
  * huaixin 2021/12/22 10:05 AM
  */
-public interface Metadata {
+public interface MetadataService {
 
     Optional<String> getSchema();
 

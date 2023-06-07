@@ -54,8 +54,8 @@ public class MetadataUtil {
         return value;
     }
 
-    public static QualifiedObjectName createQualifiedObjectName(Metadata metadata, Node node, QualifiedName name) {
-        requireNonNull(metadata, "metadata is null");
+    public static QualifiedObjectName createQualifiedObjectName(MetadataService metadataService, Node node, QualifiedName name) {
+        requireNonNull(metadataService, "metadata is null");
         requireNonNull(name, "name is null");
         if (name.getParts().size() > 3) {
             throw new SqlFlowException(format("Too many dots in table name: %s", name));
@@ -63,9 +63,9 @@ public class MetadataUtil {
 
         List<String> parts = Lists.reverse(name.getParts());
         String objectName = parts.get(0);
-        String schemaName = (parts.size() > 1) ? parts.get(1) : metadata.getSchema().orElseThrow(() ->
+        String schemaName = (parts.size() > 1) ? parts.get(1) : metadataService.getSchema().orElseThrow(() ->
                 SemanticExceptions.semanticException(node, "Schema must be specified when session schema is not set"));
-        String catalogName = (parts.size() > 2) ? parts.get(2) : metadata.getCatalog().orElseThrow(() ->
+        String catalogName = (parts.size() > 2) ? parts.get(2) : metadataService.getCatalog().orElseThrow(() ->
                 SemanticExceptions.semanticException(node, "Catalog must be specified when session catalog is not set"));
 
         return new QualifiedObjectName(catalogName, schemaName, objectName);

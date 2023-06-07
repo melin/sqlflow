@@ -1,6 +1,6 @@
 package com.github.melin.sqlflow.analyzer;
 
-import com.github.melin.sqlflow.metadata.Metadata;
+import com.github.melin.sqlflow.metadata.MetadataService;
 import com.github.melin.sqlflow.tree.expression.Expression;
 import com.github.melin.sqlflow.tree.expression.FunctionCall;
 import com.github.melin.sqlflow.tree.expression.GroupingOperation;
@@ -14,8 +14,8 @@ import static com.github.melin.sqlflow.analyzer.SemanticExceptions.semanticExcep
 
 public class Analyzer {
 
-    static void verifyNoAggregateWindowOrGroupingFunctions(Metadata metadata, Expression predicate, String clause) {
-        List<FunctionCall> aggregates = extractAggregateFunctions(ImmutableList.of(predicate), metadata);
+    static void verifyNoAggregateWindowOrGroupingFunctions(MetadataService metadataService, Expression predicate, String clause) {
+        List<FunctionCall> aggregates = extractAggregateFunctions(ImmutableList.of(predicate), metadataService);
 
         List<Expression> windowExpressions = extractWindowExpressions(ImmutableList.of(predicate));
 

@@ -1,4 +1,4 @@
-package com.github.melin.sqlflow.parser.gauss;
+package com.github.melin.sqlflow.parser.spark;
 
 import com.github.melin.sqlflow.metadata.*;
 import com.github.melin.sqlflow.tree.QualifiedName;
@@ -12,7 +12,7 @@ import java.util.Optional;
 /**
  * huaixin 2021/12/25 6:13 PM
  */
-public class SimpleGaussMetadata implements Metadata {
+public class SimpleSparkMetadataService implements MetadataService {
     @Override
     public Optional<String> getSchema() {
         return Optional.of("bigdata");

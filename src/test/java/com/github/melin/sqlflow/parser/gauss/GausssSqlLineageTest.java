@@ -31,7 +31,7 @@ public class GausssSqlLineageTest extends AbstractSqlLineageTest {
         Statement statement = SQL_PARSER.createStatement(sql);
 
         Analysis analysis = new Analysis(statement, emptyMap());
-        StatementAnalyzer statementAnalyzer = new StatementAnalyzer(analysis, new SimpleGaussMetadata(), SQL_PARSER);
+        StatementAnalyzer statementAnalyzer = new StatementAnalyzer(analysis, new SimpleGaussMetadataService(), SQL_PARSER);
         
         statementAnalyzer.analyze(statement, Optional.empty());
 

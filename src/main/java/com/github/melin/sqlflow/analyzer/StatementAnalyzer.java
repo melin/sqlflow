@@ -5,12 +5,10 @@ import com.github.melin.sqlflow.SqlFlowException;
 import com.github.melin.sqlflow.analyzer.Analysis.SelectExpression;
 import com.github.melin.sqlflow.analyzer.Analysis.SourceColumn;
 import com.github.melin.sqlflow.metadata.*;
-import com.github.melin.sqlflow.metadata.*;
 import com.github.melin.sqlflow.parser.ParsingException;
 import com.github.melin.sqlflow.parser.SqlParser;
 import com.github.melin.sqlflow.tree.*;
 import com.github.melin.sqlflow.tree.expression.*;
-import com.github.melin.sqlflow.tree.group.*;
 import com.github.melin.sqlflow.tree.group.*;
 import com.github.melin.sqlflow.tree.join.Join;
 import com.github.melin.sqlflow.tree.join.JoinCriteria;
@@ -21,17 +19,12 @@ import com.github.melin.sqlflow.tree.relation.Table;
 import com.github.melin.sqlflow.tree.relation.*;
 import com.github.melin.sqlflow.tree.statement.*;
 import com.github.melin.sqlflow.tree.window.*;
-import com.github.melin.sqlflow.tree.window.*;
 import com.github.melin.sqlflow.tree.window.rowPattern.PatternRecognitionRelation;
 import com.github.melin.sqlflow.tree.window.rowPattern.RowPattern;
 import com.github.melin.sqlflow.type.ArrayType;
 import com.github.melin.sqlflow.type.MapType;
 import com.github.melin.sqlflow.type.RowType;
 import com.github.melin.sqlflow.type.Type;
-import com.github.melin.sqlflow.tree.*;
-import com.github.melin.sqlflow.tree.expression.*;
-import com.github.melin.sqlflow.tree.relation.*;
-import com.github.melin.sqlflow.tree.statement.*;
 import com.google.common.collect.*;
 
 import java.util.*;
@@ -66,15 +59,15 @@ public class StatementAnalyzer {
 
     private static final Set<String> WINDOW_VALUE_FUNCTIONS = ImmutableSet.of("lead", "lag", "first_value", "last_value", "nth_value");
 
-    private final Metadata metadata;
+    private final MetadataService metadataService;
 
     private final Analysis analysis;
 
     private final SqlParser sqlParser;
 
-    public StatementAnalyzer(Analysis analysis, Metadata metadata, SqlParser sqlParser) {
+    public StatementAnalyzer(Analysis analysis, MetadataService metadataService, SqlParser sqlParser) {
         this.analysis = requireNonNull(analysis, "analysis is null");
-        this.metadata = requireNonNull(metadata, "metadata is null");
+        this.metadataService = requireNonNull(metadataService, "metadata is null");
         this.sqlParser = requireNonNull(sqlParser, "sqlParser is null");
     }
 
@@ -123,10 +116,10 @@ public class StatementAnalyzer {
 
         @Override
         public Scope visitInsert(Insert insert, Optional<Scope> scope) {
-            QualifiedObjectName targetTable = createQualifiedObjectName(metadata, insert, insert.getTarget());
+            QualifiedObjectName targetTable = createQualifiedObjectName(metadataService, insert, insert.getTarget());
             Scope queryScope = analyze(insert.getQuery(), createScope(scope));
 
-            Optional<SchemaTable> tableSchema = metadata.getTableSchema(targetTable);
+            Optional<SchemaTable> tableSchema = metadataService.getTableSchema(targetTable);
 
             if (!tableSchema.isPresent()) {
                 throw new ParsingException("table " + targetTable + " metadata not exists");
@@ -173,9 +166,9 @@ public class StatementAnalyzer {
         @Override
         public Scope visitCreateTableAsSelect(CreateTableAsSelect node, Optional<Scope> scope) {
             // turn this into a query that has a new table writer node on top.
-            QualifiedObjectName targetTable = createQualifiedObjectName(metadata, node, node.getName());
+            QualifiedObjectName targetTable = createQualifiedObjectName(metadataService, node, node.getName());
 
-            Optional<SchemaTable> tableSchema = metadata.getTableSchema(targetTable);
+            Optional<SchemaTable> tableSchema = metadataService.getTableSchema(targetTable);
             if (tableSchema.isPresent()) {
                 if (node.isNotExists()) {
                     analysis.setUpdateType("CREATE TABLE");
@@ -214,10 +207,10 @@ public class StatementAnalyzer {
 
         @Override
         public Scope visitCreateView(CreateView node, Optional<Scope> scope) {
-            QualifiedObjectName viewName = createQualifiedObjectName(metadata, node, node.getName());
+            QualifiedObjectName viewName = createQualifiedObjectName(metadataService, node, node.getName());
 
             // analyze the query that creates the view
-            StatementAnalyzer analyzer = new StatementAnalyzer(analysis, metadata, sqlParser);
+            StatementAnalyzer analyzer = new StatementAnalyzer(analysis, metadataService, sqlParser);
 
             Scope queryScope = analyzer.analyze(node.getQuery(), scope);
 
@@ -246,15 +239,15 @@ public class StatementAnalyzer {
                 }
             }
 
-            QualifiedObjectName name = createQualifiedObjectName(metadata, table, table.getName());
+            QualifiedObjectName name = createQualifiedObjectName(metadataService, table, table.getName());
 
             // This could be a reference to a logical view or a table
-            Optional<ViewDefinition> optionalView = metadata.getView(name);
+            Optional<ViewDefinition> optionalView = metadataService.getView(name);
             if (optionalView.isPresent()) {
                 return createScopeForView(table, name, scope, optionalView.get());
             }
 
-            Optional<SchemaTable> schemaTable = metadata.getTableSchema(name);
+            Optional<SchemaTable> schemaTable = metadataService.getTableSchema(name);
             if (!schemaTable.isPresent()) {
                 throw new ParsingException("table " + name + " metadata not exists");
             }
@@ -337,14 +330,14 @@ public class StatementAnalyzer {
             Statement statement = analysis.getStatement();
             if (statement instanceof CreateView) {
                 CreateView viewStatement = (CreateView) statement;
-                QualifiedObjectName viewNameFromStatement = createQualifiedObjectName(metadata, viewStatement, viewStatement.getName());
+                QualifiedObjectName viewNameFromStatement = createQualifiedObjectName(metadataService, viewStatement, viewStatement.getName());
                 if (viewStatement.isReplace() && viewNameFromStatement.equals(name)) {
                     throw semanticException(table, "Statement would create a recursive view");
                 }
             }
             if (statement instanceof CreateMaterializedView) {
                 CreateMaterializedView viewStatement = (CreateMaterializedView) statement;
-                QualifiedObjectName viewNameFromStatement = createQualifiedObjectName(metadata, viewStatement, viewStatement.getName());
+                QualifiedObjectName viewNameFromStatement = createQualifiedObjectName(metadataService, viewStatement, viewStatement.getName());
                 if (viewStatement.isReplace() && viewNameFromStatement.equals(name)) {
                     throw semanticException(table, "Statement would create a recursive materialized view");
                 }
@@ -373,7 +366,7 @@ public class StatementAnalyzer {
         private RelationType analyzeView(Query query, QualifiedObjectName name, Optional<String> catalog, Optional<String> schema, com.github.melin.sqlflow.tree.relation.Table node) {
             try {
 
-                StatementAnalyzer analyzer = new StatementAnalyzer(analysis, metadata, sqlParser);
+                StatementAnalyzer analyzer = new StatementAnalyzer(analysis, metadataService, sqlParser);
                 Scope queryScope = analyzer.analyze(query, Scope.create());
                 return queryScope.getRelationType().withAlias(name.getObjectName(), null);
             } catch (RuntimeException e) {
@@ -431,7 +424,7 @@ public class StatementAnalyzer {
                 ExpressionAnalyzer.analyzeExpression(
                         orderByScope,
                         analysis,
-                        metadata,
+                        metadataService,
                         sqlParser,
                         expression);
 
@@ -454,7 +447,7 @@ public class StatementAnalyzer {
             for (Expression expression : node.getExpressions()) {
                 List<Field> expressionOutputs = new ArrayList<>();
 
-                ExpressionAnalysis expressionAnalysis = ExpressionAnalyzer.analyzeExpression(createScope(scope), analysis, metadata, sqlParser, expression);
+                ExpressionAnalysis expressionAnalysis = ExpressionAnalyzer.analyzeExpression(createScope(scope), analysis, metadataService, sqlParser, expression);
                 Type expressionType = expressionAnalysis.getType(expression);
                 if (expressionType instanceof ArrayType) {
                     /*Type elementType = ((ArrayType) expressionType).getElementType();
@@ -716,7 +709,7 @@ public class StatementAnalyzer {
         public Scope visitSampledRelation(SampledRelation relation, Optional<Scope> scope) {
             Expression samplePercentage = relation.getSamplePercentage();
 
-            ExpressionAnalyzer.analyzeExpressions(metadata, sqlParser, ImmutableList.of(samplePercentage), analysis.getParameters()).getExpressionTypes();
+            ExpressionAnalyzer.analyzeExpressions(metadataService, sqlParser, ImmutableList.of(samplePercentage), analysis.getParameters()).getExpressionTypes();
 
             Scope relationScope = process(relation.getRelation(), scope);
             return createAndAssignScope(relation, scope, relationScope.getRelationType());
@@ -819,11 +812,11 @@ public class StatementAnalyzer {
             }
             if (criteria instanceof JoinOn) {
                 Expression expression = ((JoinOn) criteria).getExpression();
-                Analyzer.verifyNoAggregateWindowOrGroupingFunctions(metadata, expression, "JOIN clause");
+                Analyzer.verifyNoAggregateWindowOrGroupingFunctions(metadataService, expression, "JOIN clause");
 
                 // Need to register coercions in case when join criteria requires coercion (e.g. join on char(1) = char(2))
                 // Correlations are only currently support in the join criteria for INNER joins
-                ExpressionAnalysis expressionAnalysis = ExpressionAnalyzer.analyzeExpression(output, analysis, metadata, sqlParser, expression);
+                ExpressionAnalysis expressionAnalysis = ExpressionAnalyzer.analyzeExpression(output, analysis, metadataService, sqlParser, expression);
                 Type clauseType = expressionAnalysis.getType(expression);
                 if (!clauseType.equals(BOOLEAN)) {
                     if (!clauseType.equals(UNKNOWN)) {
@@ -908,7 +901,7 @@ public class StatementAnalyzer {
 
         @Override
         public Scope visitTableSubquery(TableSubquery node, Optional<Scope> scope) {
-            StatementAnalyzer analyzer = new StatementAnalyzer(analysis, metadata, sqlParser);
+            StatementAnalyzer analyzer = new StatementAnalyzer(analysis, metadataService, sqlParser);
             Scope queryScope = analyzer.analyze(node.getQuery(), scope);
             return createAndAssignScope(node, scope, queryScope.getRelationType());
         }
@@ -975,7 +968,7 @@ public class StatementAnalyzer {
             if (analysis.isAggregation(node) && node.getOrderBy().isPresent()) {
                 ImmutableList.Builder<Expression> aggregates = ImmutableList.<Expression>builder()
                         .addAll(groupByAnalysis.getOriginalExpressions())
-                        .addAll(extractAggregateFunctions(orderByExpressions, metadata))
+                        .addAll(extractAggregateFunctions(orderByExpressions, metadataService))
                         .addAll(extractExpressions(orderByExpressions, GroupingOperation.class));
 
                 analysis.setOrderByAggregates(node.getOrderBy().get(), aggregates.build());
@@ -1005,7 +998,7 @@ public class StatementAnalyzer {
                 List<Expression> orderByExpressions) {
             checkState(orderByExpressions.isEmpty() || orderByScope.isPresent(), "non-empty orderByExpressions list without orderByScope provided");
 
-            List<FunctionCall> aggregates = extractAggregateFunctions(Iterables.concat(outputExpressions, orderByExpressions), metadata);
+            List<FunctionCall> aggregates = extractAggregateFunctions(Iterables.concat(outputExpressions, orderByExpressions), metadataService);
             analysis.setAggregates(node, aggregates);
         }
 
@@ -1124,7 +1117,7 @@ public class StatementAnalyzer {
                     throw semanticException(windowExpressions.get(0), "HAVING clause cannot contain window functions or row pattern measures");
                 }
 
-                ExpressionAnalysis expressionAnalysis = ExpressionAnalyzer.analyzeExpression(scope, analysis, metadata, sqlParser, predicate);
+                ExpressionAnalysis expressionAnalysis = ExpressionAnalyzer.analyzeExpression(scope, analysis, metadataService, sqlParser, predicate);
 
                 Type predicateType = expressionAnalysis.getType(predicate);
                 if (!predicateType.equals(BOOLEAN) && !predicateType.equals(UNKNOWN)) {
@@ -1154,10 +1147,10 @@ public class StatementAnalyzer {
                                 }
 
                                 column = outputExpressions.get(toIntExact(ordinal - 1));
-                                Analyzer.verifyNoAggregateWindowOrGroupingFunctions(metadata, column, "GROUP BY clause");
+                                Analyzer.verifyNoAggregateWindowOrGroupingFunctions(metadataService, column, "GROUP BY clause");
                             } else {
-                                Analyzer.verifyNoAggregateWindowOrGroupingFunctions(metadata, column, "GROUP BY clause");
-                                ExpressionAnalyzer.analyzeExpression(scope, analysis, metadata, sqlParser, column);
+                                Analyzer.verifyNoAggregateWindowOrGroupingFunctions(metadataService, column, "GROUP BY clause");
+                                ExpressionAnalyzer.analyzeExpression(scope, analysis, metadataService, sqlParser, column);
                             }
 
                             ResolvedField field = analysis.getColumnReferenceFields().get(NodeRef.of(column));
@@ -1171,7 +1164,7 @@ public class StatementAnalyzer {
                         }
                     } else {
                         for (Expression column : groupingElement.getExpressions()) {
-                            ExpressionAnalyzer.analyzeExpression(scope, analysis, metadata, sqlParser, column);
+                            ExpressionAnalyzer.analyzeExpression(scope, analysis, metadataService, sqlParser, column);
                             if (!analysis.getColumnReferences().contains(NodeRef.of(column))) {
                                 throw semanticException(column, "GROUP BY expression must be a column reference: %s", column);
                             }
@@ -1237,7 +1230,7 @@ public class StatementAnalyzer {
                     .addAll(getSortItemsFromOrderBy(node.getOrderBy()))
                     .build();
 
-            List<FunctionCall> aggregates = extractAggregateFunctions(toExtract, metadata);
+            List<FunctionCall> aggregates = extractAggregateFunctions(toExtract, metadataService);
 
             return !aggregates.isEmpty();
         }
@@ -1357,7 +1350,7 @@ public class StatementAnalyzer {
                     checkState(field.getRelationAlias().isPresent(), "missing relation alias");
                     fieldExpression = new DereferenceExpression(DereferenceExpression.from(field.getRelationAlias().get()), new Identifier(field.getName().get()));
                 }
-                ExpressionAnalyzer.analyzeExpression(scope, analysis, metadata, sqlParser, fieldExpression);
+                ExpressionAnalyzer.analyzeExpression(scope, analysis, metadataService, sqlParser, fieldExpression);
                 outputExpressionBuilder.add(fieldExpression);
                 selectExpressionBuilder.add(new SelectExpression(fieldExpression, Optional.empty()));
 
@@ -1377,7 +1370,7 @@ public class StatementAnalyzer {
         private void analyzeAllFieldsFromRowTypeExpression(Expression expression, AllColumns allColumns, QuerySpecification node, Scope scope, ImmutableList.Builder<Expression> outputExpressionBuilder, ImmutableList.Builder<SelectExpression> selectExpressionBuilder) {
             ImmutableList.Builder<Field> itemOutputFieldBuilder = ImmutableList.builder();
 
-            ExpressionAnalysis expressionAnalysis = ExpressionAnalyzer.analyzeExpression(scope, analysis, metadata, sqlParser, expression);
+            ExpressionAnalysis expressionAnalysis = ExpressionAnalyzer.analyzeExpression(scope, analysis, metadataService, sqlParser, expression);
             Type type = expressionAnalysis.getType(expression);
             if (!(type instanceof RowType)) {
                 throw semanticException(node.getSelect(), "expected expression of type Row");
@@ -1392,7 +1385,7 @@ public class StatementAnalyzer {
             for (int i = 0; i < referencedFieldsCount; i++) {
                 Expression outputExpression = new SubscriptExpression(expression, new LongLiteral("" + (i + 1)));
                 outputExpressionBuilder.add(outputExpression);
-                ExpressionAnalyzer.analyzeExpression(scope, analysis, metadata, sqlParser, outputExpression);
+                ExpressionAnalyzer.analyzeExpression(scope, analysis, metadataService, sqlParser, outputExpression);
                 unfoldedExpressionsBuilder.add(outputExpression);
 
                 Type outputExpressionType = type.getTypeParameters().get(i);
@@ -1412,7 +1405,7 @@ public class StatementAnalyzer {
 
         private void analyzeSelectSingleColumn(SingleColumn singleColumn, QuerySpecification node, Scope scope, ImmutableList.Builder<Expression> outputExpressionBuilder, ImmutableList.Builder<SelectExpression> selectExpressionBuilder) {
             Expression expression = singleColumn.getExpression();
-            ExpressionAnalysis expressionAnalysis = ExpressionAnalyzer.analyzeExpression(scope, analysis, metadata, sqlParser, expression);
+            ExpressionAnalysis expressionAnalysis = ExpressionAnalyzer.analyzeExpression(scope, analysis, metadataService, sqlParser, expression);
             //analysis.recordSubqueries(node, expressionAnalysis);
             outputExpressionBuilder.add(expression);
             selectExpressionBuilder.add(new SelectExpression(expression, Optional.empty()));
@@ -1487,9 +1480,9 @@ public class StatementAnalyzer {
         }
 
         private void analyzeWhere(Node node, Scope scope, Expression predicate) {
-            Analyzer.verifyNoAggregateWindowOrGroupingFunctions(metadata, predicate, "WHERE clause");
+            Analyzer.verifyNoAggregateWindowOrGroupingFunctions(metadataService, predicate, "WHERE clause");
 
-            ExpressionAnalysis expressionAnalysis = ExpressionAnalyzer.analyzeExpression(scope, analysis, metadata, sqlParser, predicate);
+            ExpressionAnalysis expressionAnalysis = ExpressionAnalyzer.analyzeExpression(scope, analysis, metadataService, sqlParser, predicate);
 
             Type predicateType = expressionAnalysis.getType(predicate);
             if (!predicateType.equals(BOOLEAN)) {
@@ -1517,7 +1510,7 @@ public class StatementAnalyzer {
             for (int fieldIndex = 0; fieldIndex < scope.getRelationType().getAllFieldCount(); fieldIndex++) {
                 FieldReference expression = new FieldReference(fieldIndex);
                 builder.add(expression);
-                ExpressionAnalyzer.analyzeExpression(scope, analysis, metadata, sqlParser, expression);
+                ExpressionAnalyzer.analyzeExpression(scope, analysis, metadataService, sqlParser, expression);
             }
             return builder.build();
         }

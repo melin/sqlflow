@@ -28,7 +28,7 @@ public class PrestoSqlLineageTest extends AbstractSqlLineageTest {
         Statement statement = SQL_PARSER.createStatement(sql);
 
         Analysis analysis = new Analysis(statement, emptyMap());
-        StatementAnalyzer statementAnalyzer = new StatementAnalyzer(analysis, new SimplePrestoMetadata(), SQL_PARSER);
+        StatementAnalyzer statementAnalyzer = new StatementAnalyzer(analysis, new SimplePrestoMetadataService(), SQL_PARSER);
         
         statementAnalyzer.analyze(statement, Optional.empty());
 
