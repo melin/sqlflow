@@ -20,6 +20,7 @@ public class QueryPeriod extends Node {
 
     public enum RangeType {
         TIMESTAMP,
+        SYSTEM_TIME,
         VERSION
     }
 

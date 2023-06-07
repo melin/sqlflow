@@ -9,7 +9,6 @@ import com.github.melin.sqlflow.tree.filter.FetchFirst;
 import com.github.melin.sqlflow.tree.filter.Limit;
 import com.github.melin.sqlflow.tree.filter.Offset;
 import com.github.melin.sqlflow.tree.group.*;
-import com.github.melin.sqlflow.tree.group.*;
 import com.github.melin.sqlflow.tree.join.Join;
 import com.github.melin.sqlflow.tree.join.JoinCriteria;
 import com.github.melin.sqlflow.tree.join.JoinOn;
@@ -19,14 +18,6 @@ import com.github.melin.sqlflow.tree.merge.MergeCase;
 import com.github.melin.sqlflow.tree.merge.MergeDelete;
 import com.github.melin.sqlflow.tree.merge.MergeInsert;
 import com.github.melin.sqlflow.tree.merge.MergeUpdate;
-import com.github.melin.sqlflow.tree.relation.*;
-import com.github.melin.sqlflow.tree.statement.*;
-import com.github.melin.sqlflow.tree.type.*;
-import com.github.melin.sqlflow.tree.window.*;
-import com.github.melin.sqlflow.tree.window.rowPattern.*;
-import com.github.melin.sqlflow.tree.*;
-import com.github.melin.sqlflow.tree.expression.*;
-import com.github.melin.sqlflow.tree.literal.*;
 import com.github.melin.sqlflow.tree.relation.*;
 import com.github.melin.sqlflow.tree.statement.*;
 import com.github.melin.sqlflow.tree.type.*;
@@ -44,6 +35,8 @@ import java.util.function.Function;
 
 import static com.github.melin.sqlflow.autogen.SqlFlowStatementLexer.TIME;
 import static com.github.melin.sqlflow.autogen.SqlFlowStatementLexer.TIMESTAMP;
+import static com.github.melin.sqlflow.autogen.SqlFlowStatementLexer.SYSTEM_TIME;
+import static com.github.melin.sqlflow.autogen.SqlFlowStatementLexer.VERSION;
 import static com.github.melin.sqlflow.tree.window.SkipTo.*;
 import static com.github.melin.sqlflow.tree.window.rowPattern.AnchorPattern.Type.PARTITION_END;
 import static com.github.melin.sqlflow.tree.window.rowPattern.AnchorPattern.Type.PARTITION_START;
@@ -2042,8 +2035,10 @@ public class AstBuilder extends SqlFlowStatementBaseVisitor<Node> {
         switch (token.getType()) {
             case TIMESTAMP:
                 return QueryPeriod.RangeType.TIMESTAMP;
-            case SqlFlowStatementLexer.VERSION:
+            case VERSION:
                 return QueryPeriod.RangeType.VERSION;
+            case SYSTEM_TIME:
+                return QueryPeriod.RangeType.SYSTEM_TIME;
         }
         throw new IllegalArgumentException("Unsupported query period range type: " + token.getText());
     }

@@ -1,7 +1,6 @@
 package com.github.melin.sqlflow.tree.expression;
 
 import com.github.melin.sqlflow.AstVisitor;
-import com.github.melin.sqlflow.formatter.ExpressionFormatter;
 import com.github.melin.sqlflow.tree.Node;
 import com.github.melin.sqlflow.tree.NodeLocation;
 
@@ -22,10 +21,5 @@ public abstract class Expression
     @Override
     public <R, C> R accept(AstVisitor<R, C> visitor, C context) {
         return visitor.visitExpression(this, context);
-    }
-
-    @Override
-    public final String toString() {
-        return ExpressionFormatter.formatExpression(this);
     }
 }

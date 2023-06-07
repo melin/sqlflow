@@ -1,10 +1,8 @@
 package com.github.melin.sqlflow.parser.presto;
 
-import com.github.melin.sqlflow.DbType;
 import com.github.melin.sqlflow.analyzer.Analysis;
 import com.github.melin.sqlflow.analyzer.OutputColumn;
 import com.github.melin.sqlflow.analyzer.StatementAnalyzer;
-import com.github.melin.sqlflow.formatter.SqlFormatter;
 import com.github.melin.sqlflow.metadata.Column;
 import com.github.melin.sqlflow.metadata.QualifiedObjectName;
 import com.github.melin.sqlflow.parser.AbstractSqlLineageTest;
@@ -22,7 +20,7 @@ import static java.util.Collections.emptyMap;
  */
 public class PrestoSqlLineageTest extends AbstractSqlLineageTest {
 
-    protected static final SqlParser SQL_PARSER = new SqlParser(DbType.PRESTO);
+    protected static final SqlParser SQL_PARSER = new SqlParser();
 
     @Test
     public void testInsertInto() throws Exception {
@@ -34,7 +32,6 @@ public class PrestoSqlLineageTest extends AbstractSqlLineageTest {
         
         statementAnalyzer.analyze(statement, Optional.empty());
 
-        System.out.println(SqlFormatter.formatSql(statement));
         //System.out.println(MapperUtils.toJSONString(analysis.getTarget().get()));
 
         assertLineage(analysis, new OutputColumn(new Column("name", "varchar"), ImmutableSet.of(

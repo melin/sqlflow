@@ -1,7 +1,6 @@
 package com.github.melin.sqlflow.parser.spark;
 
 import com.github.melin.sqlflow.metadata.*;
-import com.github.melin.sqlflow.metadata.*;
 import com.github.melin.sqlflow.tree.QualifiedName;
 import com.github.melin.sqlflow.type.BigintType;
 import com.github.melin.sqlflow.type.VarcharType;

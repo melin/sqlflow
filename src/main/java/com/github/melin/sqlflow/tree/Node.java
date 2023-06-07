@@ -37,9 +37,6 @@ public abstract class Node {
     @Override
     public abstract boolean equals(Object obj);
 
-    @Override
-    public abstract String toString();
-
     /**
      * Compare with another node by considering internal state excluding any Node returned by getChildren()
      */

@@ -1,6 +1,5 @@
 package com.github.melin.sqlflow.parser.spark;
 
-import com.github.melin.sqlflow.DbType;
 import com.github.melin.sqlflow.analyzer.Analysis;
 import com.github.melin.sqlflow.analyzer.OutputColumn;
 import com.github.melin.sqlflow.analyzer.StatementAnalyzer;
@@ -21,7 +20,7 @@ import static java.util.Collections.emptyMap;
  */
 public class SparkSqlLineageTest extends AbstractSqlLineageTest {
 
-    protected static final SqlParser SQL_PARSER = new SqlParser(DbType.SPARK);
+    protected static final SqlParser SQL_PARSER = new SqlParser();
 
     @Test
     public void testInsertInto() throws Exception {

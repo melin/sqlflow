@@ -128,6 +128,10 @@ public class StatementAnalyzer {
 
             Optional<SchemaTable> tableSchema = metadata.getTableSchema(targetTable);
 
+            if (!tableSchema.isPresent()) {
+                throw new ParsingException("table " + targetTable + " metadata not exists");
+            }
+
             List<ColumnSchema> columns = tableSchema.get().getColumns().stream().filter(column -> !column.isHidden()).collect(Collectors.toList());
 
             List<String> tableColumns = columns.stream().map(ColumnSchema::getName).collect(toImmutableList());
@@ -251,6 +255,9 @@ public class StatementAnalyzer {
             }
 
             Optional<SchemaTable> schemaTable = metadata.getTableSchema(name);
+            if (!schemaTable.isPresent()) {
+                throw new ParsingException("table " + name + " metadata not exists");
+            }
 
             ImmutableList.Builder<Field> fields = ImmutableList.builder();
             fields.addAll(analyzeTableOutputFields(table, name, schemaTable.get()));

@@ -1,6 +1,5 @@
 package com.github.melin.sqlflow.parser;
 
-import com.github.melin.sqlflow.DbType;
 import com.github.melin.sqlflow.autogen.SqlFlowStatementBaseListener;
 import com.github.melin.sqlflow.autogen.SqlFlowStatementLexer;
 import com.github.melin.sqlflow.autogen.SqlFlowStatementParser;
@@ -11,6 +10,7 @@ import org.antlr.v4.runtime.atn.PredictionMode;
 import org.antlr.v4.runtime.misc.Pair;
 import org.antlr.v4.runtime.misc.ParseCancellationException;
 import org.antlr.v4.runtime.tree.TerminalNode;
+import org.apache.commons.lang3.StringUtils;
 
 import java.util.Arrays;
 import java.util.List;
@@ -23,51 +23,38 @@ import static java.util.Objects.requireNonNull;
  * huaixin 2021/12/18 11:04 PM
  */
 public class SqlParser {
-    private static final BaseErrorListener LEXER_ERROR_LISTENER = new BaseErrorListener() {
-        @Override
-        public void syntaxError(Recognizer<?, ?> recognizer, Object offendingSymbol, int line, int charPositionInLine, String message, RecognitionException e) {
-            throw new ParsingException(message, e, line, charPositionInLine + 1);
-        }
-    };
     private static final BiConsumer<SqlFlowStatementLexer, SqlFlowStatementParser> DEFAULT_PARSER_INITIALIZER =
             (SqlFlowStatementLexer lexer, SqlFlowStatementParser parser) -> {
     };
 
     private final BiConsumer<SqlFlowStatementLexer, SqlFlowStatementParser> initializer;
 
-    private static final ErrorHandler PARSER_ERROR_HANDLER = ErrorHandler.builder()
-            .specialRule(SqlFlowStatementParser.RULE_expression, "<expression>")
-            .specialRule(SqlFlowStatementParser.RULE_booleanExpression, "<expression>")
-            .specialRule(SqlFlowStatementParser.RULE_valueExpression, "<expression>")
-            .specialRule(SqlFlowStatementParser.RULE_primaryExpression, "<expression>")
-            .specialRule(SqlFlowStatementParser.RULE_predicate, "<predicate>")
-            .specialRule(SqlFlowStatementParser.RULE_identifier, "<identifier>")
-            .specialRule(SqlFlowStatementParser.RULE_string, "<string>")
-            .specialRule(SqlFlowStatementParser.RULE_query, "<query>")
-            .specialRule(SqlFlowStatementParser.RULE_type, "<type>")
-            .specialToken(SqlFlowStatementParser.INTEGER_VALUE, "<integer>")
-            .ignoredRule(SqlFlowStatementParser.RULE_nonReserved)
-            .build();
-
-    private final DbType dbType;
-    public SqlParser(DbType dbType) {
-        this(DEFAULT_PARSER_INITIALIZER, dbType);
+    public SqlParser() {
+        this(DEFAULT_PARSER_INITIALIZER);
     }
 
-    public SqlParser(BiConsumer<SqlFlowStatementLexer, SqlFlowStatementParser> initializer, DbType dbType) {
+    public SqlParser(BiConsumer<SqlFlowStatementLexer, SqlFlowStatementParser> initializer) {
         this.initializer = requireNonNull(initializer, "initializer is null");
-        this.dbType = dbType;
     }
 
     public Statement createStatement(String sql) {
-        return (Statement) invokeParser("statement", sql, SqlFlowStatementParser::singleStatement, new ParsingOptions());
+        try {
+            return (Statement) invokeParser("statement", sql, SqlFlowStatementParser::singleStatement, new ParsingOptions());
+        } catch (ParseException e) {
+            if(StringUtils.isNotBlank(e.getCommand())) {
+                throw e;
+            } else {
+                throw e.withCommand(sql);
+            }
+        }
     }
 
     private Node invokeParser(String name, String sql,
                               Function<SqlFlowStatementParser, ParserRuleContext> parseFunction,
                               ParsingOptions parsingOptions) {
         try {
-            SqlFlowStatementLexer lexer = new SqlFlowStatementLexer(new CaseInsensitiveStream(CharStreams.fromString(sql)));
+            UpperCaseCharStream charStream = new UpperCaseCharStream(CharStreams.fromString(sql));
+            SqlFlowStatementLexer lexer = new SqlFlowStatementLexer(charStream);
             CommonTokenStream tokenStream = new CommonTokenStream(lexer);
             SqlFlowStatementParser parser = new SqlFlowStatementParser(tokenStream);
             initializer.accept(lexer, parser);
@@ -89,10 +76,10 @@ public class SqlParser {
             parser.addParseListener(new PostProcessor(Arrays.asList(parser.getRuleNames()), parser));
 
             lexer.removeErrorListeners();
-            lexer.addErrorListener(LEXER_ERROR_LISTENER);
+            lexer.addErrorListener(new ParseErrorListener());
 
             parser.removeErrorListeners();
-            parser.addErrorListener(PARSER_ERROR_HANDLER);
+            parser.addErrorListener(new ParseErrorListener());
 
             ParserRuleContext tree;
             try {
