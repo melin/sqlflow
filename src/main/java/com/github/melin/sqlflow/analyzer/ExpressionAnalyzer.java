@@ -12,14 +12,11 @@ import com.github.melin.sqlflow.tree.window.FrameBound;
 import com.github.melin.sqlflow.tree.window.MeasureDefinition;
 import com.github.melin.sqlflow.tree.window.VariableDefinition;
 import com.github.melin.sqlflow.tree.window.WindowFrame;
-import com.github.melin.sqlflow.type.CharType;
 import com.github.melin.sqlflow.type.RowType;
 import com.github.melin.sqlflow.type.Type;
-import com.github.melin.sqlflow.type.VarcharType;
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Multimap;
-import io.airlift.slice.SliceUtf8;
 
 import javax.annotation.Nullable;
 import java.util.*;
@@ -31,21 +28,7 @@ import static com.github.melin.sqlflow.analyzer.SemanticExceptions.semanticExcep
 import static com.github.melin.sqlflow.function.OperatorType.SUBSCRIPT;
 import static com.github.melin.sqlflow.tree.window.FrameBound.Type.*;
 import static com.github.melin.sqlflow.tree.window.WindowFrame.Type.*;
-import static com.github.melin.sqlflow.type.ArrayType.ARRAY;
-import static com.github.melin.sqlflow.type.BigintType.BIGINT;
-import static com.github.melin.sqlflow.type.BooleanType.BOOLEAN;
-import static com.github.melin.sqlflow.type.DecimalType.DECIMAL;
-import static com.github.melin.sqlflow.type.DoubleType.DOUBLE;
-import static com.github.melin.sqlflow.type.IntegerType.INTEGER;
-import static com.github.melin.sqlflow.type.IntervalDayTimeType.INTERVAL_DAY_TIME;
-import static com.github.melin.sqlflow.type.IntervalYearMonthType.INTERVAL_YEAR_MONTH;
-import static com.github.melin.sqlflow.type.RealType.REAL;
-import static com.github.melin.sqlflow.type.SmallIntType.SMALLINT;
-import static com.github.melin.sqlflow.type.TimeType.TIME;
-import static com.github.melin.sqlflow.type.TimestampType.TIMESTAMP;
-import static com.github.melin.sqlflow.type.TinyIntType.TINYINT;
 import static com.github.melin.sqlflow.type.UnknownType.UNKNOWN;
-import static com.github.melin.sqlflow.type.VarcharType.VARCHAR;
 import static com.github.melin.sqlflow.util.NodeUtils.getSortItemsFromOrderBy;
 import static com.google.common.base.Preconditions.checkState;
 import static com.google.common.collect.ImmutableList.toImmutableList;
@@ -90,7 +73,6 @@ public class ExpressionAnalyzer {
     private final Map<NodeRef<DereferenceExpression>, LabelPrefixedReference> labelDereferences = new LinkedHashMap<>();
 
     private final Map<NodeRef<Parameter>, Expression> parameters;
-    private final Function<Expression, Type> getPreanalyzedType;
     private final Function<Node, Analysis.ResolvedWindow> getResolvedWindow;
     private final List<Field> sourceFields = new ArrayList<>();
 
@@ -129,7 +111,6 @@ public class ExpressionAnalyzer {
     private ExpressionAnalyzer(Analysis analysis, MetadataService metadataService, SqlParser sqlParser) {
         this(analysis, metadataService, sqlParser,
                 analysis.getParameters(),
-                analysis::getType,
                 analysis::getWindow);
     }
 
@@ -138,13 +119,11 @@ public class ExpressionAnalyzer {
             MetadataService metadataService,
             SqlParser sqlParser,
             Map<NodeRef<Parameter>, Expression> parameters,
-            Function<Expression, Type> getPreanalyzedType,
             Function<Node, Analysis.ResolvedWindow> getResolvedWindow) {
         this.analysis = requireNonNull(analysis, "analysis is null");
         this.metadataService = requireNonNull(metadataService, "analysis is null");
         this.sqlParser = requireNonNull(sqlParser, "sqlParser is null");
         this.parameters = requireNonNull(parameters, "parameters is null");
-        this.getPreanalyzedType = requireNonNull(getPreanalyzedType, "getPreanalyzedType is null");
         this.getResolvedWindow = requireNonNull(getResolvedWindow, "getResolvedWindow is null");
     }
 
@@ -333,7 +312,7 @@ public class ExpressionAnalyzer {
             }
 
             Type type = signature.getReturnType();*/
-            return setExpressionType(node, VARCHAR);
+            return setExpressionType(node, UNKNOWN);
         }
 
         private Type analyzePatternRecognitionFunction(FunctionCall node, StackableAstVisitorContext<Context> context) {
@@ -387,7 +366,7 @@ public class ExpressionAnalyzer {
                     if (!node.getArguments().isEmpty()) {
                         throw semanticException(node, "MATCH_NUMBER pattern recognition function takes no arguments");
                     }
-                    return setExpressionType(node, BIGINT);
+                    return setExpressionType(node, UNKNOWN);
                 case "CLASSIFIER":
                     if (node.getArguments().size() > 1) {
                         throw semanticException(node, "CLASSIFIER pattern recognition function takes no arguments or 1 argument");
@@ -403,7 +382,7 @@ public class ExpressionAnalyzer {
                             throw semanticException(argument, "%s is not a primary pattern variable or subset name", identifier.getValue());
                         }
                     }
-                    return setExpressionType(node, VARCHAR);
+                    return setExpressionType(node, UNKNOWN);
                 default:
                     throw new IllegalStateException("unexpected pattern recognition function " + node.getName());
             }
@@ -430,11 +409,7 @@ public class ExpressionAnalyzer {
             MeasureDefinition matchingMeasure = getOnlyElement(matchingMeasures);
 
             analyzeWindow(window, context, (Node) node.getWindow());
-
-            Expression expression = matchingMeasure.getExpression();
-            Type type = window.isFrameInherited() ? getPreanalyzedType.apply(expression) : getExpressionType(expression);
-
-            return setExpressionType(node, type);
+            return setExpressionType(node, UNKNOWN);
         }
 
         private void analyzeWindow(Analysis.ResolvedWindow window, StackableAstVisitorContext<Context> context, Node originalNode) {
@@ -499,10 +474,7 @@ public class ExpressionAnalyzer {
                     // analyze expressions in MEASURES and DEFINE (with set of all labels passed as context)
                     for (VariableDefinition variableDefinition : frame.getVariableDefinitions()) {
                         Expression expression = variableDefinition.getExpression();
-                        Type type = process(expression, new StackableAstVisitorContext<>(context.getContext().patternRecognition(analysis.getAllLabels())));
-                        if (!type.equals(BOOLEAN)) {
-                            throw semanticException(expression, "Expression defining a label must be boolean (actual type: %s)", type);
-                        }
+                        process(expression, new StackableAstVisitorContext<>(context.getContext().patternRecognition(analysis.getAllLabels())));
                     }
                     for (MeasureDefinition measureDefinition : frame.getMeasures()) {
                         Expression expression = measureDefinition.getExpression();
@@ -610,7 +582,6 @@ public class ExpressionAnalyzer {
                     ExpressionAnalyzer innerExpressionAnalyzer = new ExpressionAnalyzer(
                             analysis, metadataService, sqlParser,
                             parameters,
-                            getPreanalyzedType,
                             getResolvedWindow);
                     if (context.getContext().isInLambda()) {
                         for (LambdaArgumentDeclaration lambdaArgument : context.getContext().getFieldToLambdaArgumentDeclaration().values()) {
@@ -769,16 +740,6 @@ public class ExpressionAnalyzer {
         }
 
         @Override
-        public Type visitNotExpression(NotExpression node, StackableAstVisitorContext<Context> context) {
-            return setExpressionType(node, BOOLEAN);
-        }
-
-        @Override
-        public Type visitLogicalExpression(LogicalExpression node, StackableAstVisitorContext<Context> context) {
-            return setExpressionType(node, BOOLEAN);
-        }
-
-        @Override
         public Type visitComparisonExpression(ComparisonExpression node, StackableAstVisitorContext<Context> context) {
             OperatorType operatorType;
             switch (node.getOperator()) {
@@ -807,14 +768,14 @@ public class ExpressionAnalyzer {
         public Type visitIsNullPredicate(IsNullPredicate node, StackableAstVisitorContext<Context> context) {
             process(node.getValue(), context);
 
-            return setExpressionType(node, BOOLEAN);
+            return setExpressionType(node, UNKNOWN);
         }
 
         @Override
         public Type visitIsNotNullPredicate(IsNotNullPredicate node, StackableAstVisitorContext<Context> context) {
             process(node.getValue(), context);
 
-            return setExpressionType(node, BOOLEAN);
+            return setExpressionType(node, UNKNOWN);
         }
 
         @Override
@@ -883,14 +844,8 @@ public class ExpressionAnalyzer {
         public Type visitArithmeticUnary(ArithmeticUnaryExpression node, StackableAstVisitorContext<Context> context) {
             switch (node.getSign()) {
                 case PLUS:
-                    Type type = process(node.getValue(), context);
-
-                    if (!type.equals(DOUBLE) && !type.equals(REAL) && !type.equals(BIGINT) && !type.equals(INTEGER) && !type.equals(SMALLINT) && !type.equals(TINYINT)) {
-                        // TODO: figure out a type-agnostic way of dealing with this. Maybe add a special unary operator
-                        // that types can chose to implement, or piggyback on the existence of the negation operator
-                        throw semanticException(node, "Unary '+' operator cannot by applied to %s type", type);
-                    }
-                    return setExpressionType(node, type);
+                    process(node.getValue(), context);
+                    return setExpressionType(node, UNKNOWN);
                 case MINUS:
                     return getOperator(context, node, OperatorType.NEGATION, node.getValue());
             }
@@ -926,7 +881,7 @@ public class ExpressionAnalyzer {
                 process(escape, context);
             }
 
-            return setExpressionType(node, BOOLEAN);
+            return setExpressionType(node, UNKNOWN);
         }
 
         @Override
@@ -937,10 +892,7 @@ public class ExpressionAnalyzer {
                 if (!(node.getIndex() instanceof LongLiteral)) {
                     throw semanticException(node.getIndex(), "Subscript expression on ROW requires a constant index");
                 }
-                Type indexType = process(node.getIndex(), context);
-                if (!indexType.equals(INTEGER)) {
-                    throw semanticException(node.getIndex(), "Subscript expression on ROW requires integer index, found %s", indexType);
-                }
+                process(node.getIndex(), context);
                 int indexValue = toIntExact(((LongLiteral) node.getIndex()).getValue());
                 if (indexValue <= 0) {
                     throw semanticException(node.getIndex(), "Invalid subscript index: %s. ROW indices start at 1", indexValue);
@@ -954,78 +906,6 @@ public class ExpressionAnalyzer {
 
             // Subscript on Array or Map uses an operator to resolve Type.
             return getOperator(context, node, SUBSCRIPT, node.getBase(), node.getIndex());
-        }
-
-        @Override
-        public Type visitArrayConstructor(ArrayConstructor node, StackableAstVisitorContext<Context> context) {
-            return setExpressionType(node, ARRAY);
-        }
-
-        @Override
-        public Type visitStringLiteral(StringLiteral node, StackableAstVisitorContext<Context> context) {
-            VarcharType type = VarcharType.createVarcharType(SliceUtf8.countCodePoints(node.getSlice()));
-            return setExpressionType(node, type);
-        }
-
-        @Override
-        public Type visitCharLiteral(CharLiteral node, StackableAstVisitorContext<Context> context) {
-            CharType type = CharType.createCharType(node.getValue().length());
-            return setExpressionType(node, type);
-        }
-
-        @Override
-        public Type visitLongLiteral(LongLiteral node, StackableAstVisitorContext<Context> context) {
-            if (node.getValue() >= Integer.MIN_VALUE && node.getValue() <= Integer.MAX_VALUE) {
-                return setExpressionType(node, INTEGER);
-            }
-
-            return setExpressionType(node, BIGINT);
-        }
-
-        @Override
-        public Type visitDoubleLiteral(DoubleLiteral node, StackableAstVisitorContext<Context> context) {
-            return setExpressionType(node, DOUBLE);
-        }
-
-        @Override
-        public Type visitDecimalLiteral(DecimalLiteral node, StackableAstVisitorContext<Context> context) {
-            return setExpressionType(node, DECIMAL);
-        }
-
-        @Override
-        public Type visitBooleanLiteral(BooleanLiteral node, StackableAstVisitorContext<Context> context) {
-            return setExpressionType(node, BOOLEAN);
-        }
-
-        @Override
-        public Type visitGenericLiteral(GenericLiteral node, StackableAstVisitorContext<Context> context) {
-            throw semanticException(node, "Unknown type: %s", node.getType());
-        }
-
-        @Override
-        public Type visitTimeLiteral(TimeLiteral node, StackableAstVisitorContext<Context> context) {
-            return setExpressionType(node, TIME);
-        }
-
-        @Override
-        public Type visitTimestampLiteral(TimestampLiteral node, StackableAstVisitorContext<Context> context) {
-            return setExpressionType(node, TIMESTAMP);
-        }
-
-        @Override
-        public Type visitIntervalLiteral(IntervalLiteral node, StackableAstVisitorContext<Context> context) {
-            Type type;
-            if (node.isYearToMonth()) {
-                type = INTERVAL_YEAR_MONTH;
-            } else {
-                type = INTERVAL_DAY_TIME;
-            }
-            return setExpressionType(node, type);
-        }
-
-        @Override
-        public Type visitNullLiteral(NullLiteral node, StackableAstVisitorContext<Context> context) {
-            return setExpressionType(node, UNKNOWN);
         }
 
         private Type getOperator(StackableAstVisitorContext<Context> context, Expression node, OperatorType operatorType, Expression... arguments) {

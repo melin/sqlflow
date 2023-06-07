@@ -16,7 +16,6 @@ import javax.annotation.Nullable;
 import javax.annotation.concurrent.Immutable;
 import java.util.*;
 
-import static com.github.melin.sqlflow.type.VarcharType.VARCHAR;
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.collect.ImmutableSet.toImmutableSet;
 import static java.lang.Boolean.FALSE;
@@ -143,15 +142,6 @@ public class Analysis {
 
     public Map<NodeRef<Expression>, Type> getTypes() {
         return unmodifiableMap(types);
-    }
-
-    public Type getType(Expression expression) {
-        Type type = types.get(NodeRef.of(expression));
-        if (type == null) {
-            return VARCHAR;
-        }
-        //checkArgument(type != null, "Expression not analyzed: %s", expression);
-        return type;
     }
 
     public void setSelectExpressions(Node node, List<SelectExpression> expressions) {

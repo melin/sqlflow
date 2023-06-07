@@ -1,7 +1,6 @@
 package com.github.melin.sqlflow.analyzer;
 
 import com.github.melin.sqlflow.AstVisitor;
-import com.github.melin.sqlflow.SqlFlowException;
 import com.github.melin.sqlflow.analyzer.Analysis.SelectExpression;
 import com.github.melin.sqlflow.analyzer.Analysis.SourceColumn;
 import com.github.melin.sqlflow.metadata.*;
@@ -21,8 +20,6 @@ import com.github.melin.sqlflow.tree.statement.*;
 import com.github.melin.sqlflow.tree.window.*;
 import com.github.melin.sqlflow.tree.window.rowPattern.PatternRecognitionRelation;
 import com.github.melin.sqlflow.tree.window.rowPattern.RowPattern;
-import com.github.melin.sqlflow.type.ArrayType;
-import com.github.melin.sqlflow.type.MapType;
 import com.github.melin.sqlflow.type.RowType;
 import com.github.melin.sqlflow.type.Type;
 import com.google.common.collect.*;
@@ -44,7 +41,6 @@ import static com.google.common.collect.ImmutableList.toImmutableList;
 import static com.google.common.collect.ImmutableSet.toImmutableSet;
 import static com.google.common.collect.Iterables.getLast;
 import static java.lang.Math.toIntExact;
-import static java.lang.String.format;
 import static java.util.Collections.emptyList;
 import static java.util.Locale.ENGLISH;
 import static java.util.Objects.requireNonNull;
@@ -413,11 +409,6 @@ public class StatementAnalyzer {
                         sqlParser,
                         expression);
 
-                Type type = analysis.getType(expression);
-                if (!type.isOrderable()) {
-                    throw semanticException(node, "Type %s is not orderable, and therefore cannot be used in ORDER BY: %s", type, expression);
-                }
-
                 orderByFieldsBuilder.add(expression);
             }
 
@@ -432,23 +423,7 @@ public class StatementAnalyzer {
             for (Expression expression : node.getExpressions()) {
                 List<Field> expressionOutputs = new ArrayList<>();
 
-                ExpressionAnalysis expressionAnalysis = ExpressionAnalyzer.analyzeExpression(createScope(scope), analysis, metadataService, sqlParser, expression);
-                Type expressionType = expressionAnalysis.getType(expression);
-                if (expressionType instanceof ArrayType) {
-                    /*Type elementType = ((ArrayType) expressionType).getElementType();
-                    if (elementType instanceof RowType) {
-                        ((RowType) elementType).getFields().stream()
-                                .map(field -> Field.newUnqualified(field.getName(), field.getType()))
-                                .forEach(expressionOutputs::add);
-                    } else {
-                        expressionOutputs.add(Field.newUnqualified(Optional.empty(), elementType));
-                    }*/
-                } else if (expressionType instanceof MapType) {
-                    /*expressionOutputs.add(Field.newUnqualified(Optional.empty(), ((MapType) expressionType).getKeyType()));
-                    expressionOutputs.add(Field.newUnqualified(Optional.empty(), ((MapType) expressionType).getValueType()));*/
-                } else {
-                    throw new SqlFlowException("Cannot unnest type: " + expressionType);
-                }
+                ExpressionAnalyzer.analyzeExpression(createScope(scope), analysis, metadataService, sqlParser, expression);
 
                 outputFields.addAll(expressionOutputs);
                 mappings.put(NodeRef.of(expression), expressionOutputs);
@@ -1160,13 +1135,6 @@ public class StatementAnalyzer {
                 }
 
                 List<Expression> expressions = groupingExpressions.build();
-                for (Expression expression : expressions) {
-                    Type type = analysis.getType(expression);
-                    if (!type.isComparable()) {
-                        throw semanticException(node, "%s is not comparable, and therefore cannot be used in GROUP BY", type);
-                    }
-                }
-
                 Analysis.GroupingSetAnalysis groupingSets = new Analysis.GroupingSetAnalysis(expressions, cubes.build(), rollups.build(), sets.build(), complexExpressions.build());
                 analysis.setGroupingSets(node, groupingSets);
 

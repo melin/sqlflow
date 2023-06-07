@@ -1,10 +1,10 @@
 package com.github.melin.sqlflow.type;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
-import static com.github.melin.sqlflow.type.StandardTypes.ROW;
 import static java.util.Objects.requireNonNull;
 
 /**
@@ -13,30 +13,21 @@ import static java.util.Objects.requireNonNull;
 public class RowType implements Type {
 
     private final List<Field> fields;
-    private final List<Type> fieldTypes;
-    private final boolean comparable;
-    private final boolean orderable;
 
     private RowType(List<Field> fields) {
         this.fields = fields;
-        this.fieldTypes = fields.stream()
-                .map(Field::getType)
-                .collect(Collectors.toList());
-
-        this.comparable = fields.stream().allMatch(field -> field.getType().isComparable());
-        this.orderable = fields.stream().allMatch(field -> field.getType().isOrderable());
     }
 
     @Override
     public List<Type> getTypeParameters() {
-        return fieldTypes;
+        return Collections.emptyList();
     }
 
     @Override
     public String getDisplayName() {
         // Convert to standard sql name
         StringBuilder result = new StringBuilder();
-        result.append(ROW).append('(');
+        result.append("ROW").append('(');
         for (Field field : fields) {
             String typeDisplayName = field.getType().getDisplayName();
             if (field.getName().isPresent()) {
@@ -62,12 +53,12 @@ public class RowType implements Type {
 
     @Override
     public boolean isComparable() {
-        return comparable;
+        return true;
     }
 
     @Override
     public boolean isOrderable() {
-        return orderable;
+        return true;
     }
 
     public List<Field> getFields() {
