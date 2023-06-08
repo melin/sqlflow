@@ -17,7 +17,8 @@
         <maven.compiler.source>8</maven.compiler.source>
         <maven.compiler.target>8</maven.compiler.target>
         <junit.version>4.13.2</junit.version>
-        <antlr4.version>4.9.3</antlr4.version>
+        <antlr4.version>4.11.1</antlr4.version>
+        <antlr4test.version>1.22</antlr4test.version>
         <jackson.verion>2.15.2</jackson.verion>
         <kotlin.version>1.9.0-Beta</kotlin.version>
     </properties>
@@ -127,6 +128,28 @@
                     <visitor>true</visitor>
                     <treatWarningsAsErrors>true</treatWarningsAsErrors>
                 </configuration>
+            </plugin>
+
+            <plugin>
+                <groupId>com.khubla.antlr</groupId>
+                <artifactId>antlr4test-maven-plugin</artifactId>
+                <version>${antlr4test.version}</version>
+                <configuration>
+                    <verbose>false</verbose>
+                    <showTree>false</showTree>
+                    <entryPoint>parse</entryPoint>
+                    <grammarName>SqlFlow</grammarName>
+                    <packageName>com.github.melin.sqlflow.parser.antlr4</packageName>
+                    <testFileExtension>.sql</testFileExtension>
+                    <exampleFiles>src/test/resources/examples</exampleFiles>
+                </configuration>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>test</goal>
+                        </goals>
+                    </execution>
+                </executions>
             </plugin>
 
             <plugin>

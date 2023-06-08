@@ -18,7 +18,7 @@ import java.util.Map;
 /**
  * huaixin 2021/12/6 5:49 PM
  */
-public class MapperUtils {
+public class JsonUtils {
     private static final ObjectMapper objectMapper = new ObjectMapper();
 
     static {

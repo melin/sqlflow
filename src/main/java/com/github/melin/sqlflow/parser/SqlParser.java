@@ -1,8 +1,8 @@
 package com.github.melin.sqlflow.parser;
 
-import com.github.melin.sqlflow.autogen.SqlFlowStatementBaseListener;
-import com.github.melin.sqlflow.autogen.SqlFlowStatementLexer;
-import com.github.melin.sqlflow.autogen.SqlFlowStatementParser;
+import com.github.melin.sqlflow.parser.antlr4.SqlFlowLexer;
+import com.github.melin.sqlflow.parser.antlr4.SqlFlowParser;
+import com.github.melin.sqlflow.parser.antlr4.SqlFlowParserBaseListener;
 import com.github.melin.sqlflow.tree.Node;
 import com.github.melin.sqlflow.tree.statement.Statement;
 import org.antlr.v4.runtime.*;
@@ -23,23 +23,23 @@ import static java.util.Objects.requireNonNull;
  * huaixin 2021/12/18 11:04 PM
  */
 public class SqlParser {
-    private static final BiConsumer<SqlFlowStatementLexer, SqlFlowStatementParser> DEFAULT_PARSER_INITIALIZER =
-            (SqlFlowStatementLexer lexer, SqlFlowStatementParser parser) -> {
+    private static final BiConsumer<SqlFlowLexer, SqlFlowParser> DEFAULT_PARSER_INITIALIZER =
+            (SqlFlowLexer lexer, SqlFlowParser parser) -> {
     };
 
-    private final BiConsumer<SqlFlowStatementLexer, SqlFlowStatementParser> initializer;
+    private final BiConsumer<SqlFlowLexer, SqlFlowParser> initializer;
 
     public SqlParser() {
         this(DEFAULT_PARSER_INITIALIZER);
     }
 
-    public SqlParser(BiConsumer<SqlFlowStatementLexer, SqlFlowStatementParser> initializer) {
+    public SqlParser(BiConsumer<SqlFlowLexer, SqlFlowParser> initializer) {
         this.initializer = requireNonNull(initializer, "initializer is null");
     }
 
     public Statement createStatement(String sql) {
         try {
-            return (Statement) invokeParser("statement", sql, SqlFlowStatementParser::singleStatement, new ParsingOptions());
+            return (Statement) invokeParser("statement", sql, SqlFlowParser::singleStatement, new ParsingOptions());
         } catch (ParseException e) {
             if(StringUtils.isNotBlank(e.getCommand())) {
                 throw e;
@@ -50,13 +50,13 @@ public class SqlParser {
     }
 
     private Node invokeParser(String name, String sql,
-                              Function<SqlFlowStatementParser, ParserRuleContext> parseFunction,
+                              Function<SqlFlowParser, ParserRuleContext> parseFunction,
                               ParsingOptions parsingOptions) {
         try {
             UpperCaseCharStream charStream = new UpperCaseCharStream(CharStreams.fromString(sql));
-            SqlFlowStatementLexer lexer = new SqlFlowStatementLexer(charStream);
+            SqlFlowLexer lexer = new SqlFlowLexer(charStream);
             CommonTokenStream tokenStream = new CommonTokenStream(lexer);
-            SqlFlowStatementParser parser = new SqlFlowStatementParser(tokenStream);
+            SqlFlowParser parser = new SqlFlowParser(tokenStream);
             initializer.accept(lexer, parser);
 
             // Override the default error strategy to not attempt inserting or deleting a token.
@@ -101,18 +101,17 @@ public class SqlParser {
         }
     }
 
-    private static class PostProcessor
-            extends SqlFlowStatementBaseListener {
+    private static class PostProcessor extends SqlFlowParserBaseListener {
         private final List<String> ruleNames;
-        private final SqlFlowStatementParser parser;
+        private final SqlFlowParser parser;
 
-        public PostProcessor(List<String> ruleNames, SqlFlowStatementParser parser) {
+        public PostProcessor(List<String> ruleNames, SqlFlowParser parser) {
             this.ruleNames = ruleNames;
             this.parser = parser;
         }
 
         @Override
-        public void exitQuotedIdentifier(SqlFlowStatementParser.QuotedIdentifierContext context) {
+        public void exitQuotedIdentifier(SqlFlowParser.QuotedIdentifierContext context) {
             Token token = context.QUOTED_IDENTIFIER().getSymbol();
             if (token.getText().length() == 2) { // empty identifier
                 throw new ParsingException("Zero-length delimited identifier not allowed", null, token.getLine(), token.getCharPositionInLine() + 1);
@@ -120,7 +119,7 @@ public class SqlParser {
         }
 
         @Override
-        public void exitBackQuotedIdentifier(SqlFlowStatementParser.BackQuotedIdentifierContext context) {
+        public void exitBackQuotedIdentifier(SqlFlowParser.BackQuotedIdentifierContext context) {
             Token token = context.BACKQUOTED_IDENTIFIER().getSymbol();
             throw new ParsingException(
                     "backquoted identifiers are not supported; use double quotes to quote identifiers",
@@ -130,7 +129,7 @@ public class SqlParser {
         }
 
         @Override
-        public void exitDigitIdentifier(SqlFlowStatementParser.DigitIdentifierContext context) {
+        public void exitDigitIdentifier(SqlFlowParser.DigitIdentifierContext context) {
             Token token = context.DIGIT_IDENTIFIER().getSymbol();
             throw new ParsingException(
                     "identifiers must not start with a digit; surround the identifier with double quotes",
@@ -140,7 +139,7 @@ public class SqlParser {
         }
 
         @Override
-        public void exitNonReserved(SqlFlowStatementParser.NonReservedContext context) {
+        public void exitNonReserved(SqlFlowParser.NonReservedContext context) {
             // we can't modify the tree during rule enter/exit event handling unless we're dealing with a terminal.
             // Otherwise, ANTLR gets confused and fires spurious notifications.
             if (!(context.getChild(0) instanceof TerminalNode)) {
@@ -154,7 +153,7 @@ public class SqlParser {
             Token token = (Token) context.getChild(0).getPayload();
             Token newToken = new CommonToken(
                     new Pair<>(token.getTokenSource(), token.getInputStream()),
-                    SqlFlowStatementLexer.IDENTIFIER,
+                    SqlFlowLexer.IDENTIFIER,
                     token.getChannel(),
                     token.getStartIndex(),
                     token.getStopIndex());

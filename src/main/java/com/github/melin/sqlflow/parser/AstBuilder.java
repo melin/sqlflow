@@ -1,8 +1,8 @@
 package com.github.melin.sqlflow.parser;
 
-import com.github.melin.sqlflow.autogen.SqlFlowStatementBaseVisitor;
-import com.github.melin.sqlflow.autogen.SqlFlowStatementLexer;
-import com.github.melin.sqlflow.autogen.SqlFlowStatementParser;
+import com.github.melin.sqlflow.parser.antlr4.SqlFlowLexer;
+import com.github.melin.sqlflow.parser.antlr4.SqlFlowParser;
+import com.github.melin.sqlflow.parser.antlr4.SqlFlowParserBaseVisitor;
 import com.github.melin.sqlflow.tree.*;
 import com.github.melin.sqlflow.tree.expression.*;
 import com.github.melin.sqlflow.tree.filter.FetchFirst;
@@ -33,10 +33,7 @@ import org.antlr.v4.runtime.tree.TerminalNode;
 import java.util.*;
 import java.util.function.Function;
 
-import static com.github.melin.sqlflow.autogen.SqlFlowStatementLexer.TIME;
-import static com.github.melin.sqlflow.autogen.SqlFlowStatementLexer.TIMESTAMP;
-import static com.github.melin.sqlflow.autogen.SqlFlowStatementLexer.SYSTEM_TIME;
-import static com.github.melin.sqlflow.autogen.SqlFlowStatementLexer.VERSION;
+import static com.github.melin.sqlflow.parser.antlr4.SqlFlowLexer.*;
 import static com.github.melin.sqlflow.tree.window.SkipTo.*;
 import static com.github.melin.sqlflow.tree.window.rowPattern.AnchorPattern.Type.PARTITION_END;
 import static com.github.melin.sqlflow.tree.window.rowPattern.AnchorPattern.Type.PARTITION_START;
@@ -53,7 +50,7 @@ import static java.util.stream.Collectors.toList;
  * huaixin 2021/12/18 9:50 PM
  */
 
-public class AstBuilder extends SqlFlowStatementBaseVisitor<Node> {
+public class AstBuilder extends SqlFlowParserBaseVisitor<Node> {
 
     private int parameterPosition;
 
@@ -64,34 +61,34 @@ public class AstBuilder extends SqlFlowStatementBaseVisitor<Node> {
     }
 
     @Override
-    public Node visitSingleStatement(SqlFlowStatementParser.SingleStatementContext context) {
+    public Node visitSingleStatement(SqlFlowParser.SingleStatementContext context) {
         return visit(context.statement());
     }
 
     @Override
-    public Node visitStandaloneExpression(SqlFlowStatementParser.StandaloneExpressionContext context) {
+    public Node visitStandaloneExpression(SqlFlowParser.StandaloneExpressionContext context) {
         return visit(context.expression());
     }
 
     @Override
-    public Node visitStandaloneType(SqlFlowStatementParser.StandaloneTypeContext context) {
+    public Node visitStandaloneType(SqlFlowParser.StandaloneTypeContext context) {
         return visit(context.type());
     }
 
     @Override
-    public Node visitStandalonePathSpecification(SqlFlowStatementParser.StandalonePathSpecificationContext context) {
+    public Node visitStandalonePathSpecification(SqlFlowParser.StandalonePathSpecificationContext context) {
         return visit(context.pathSpecification());
     }
 
     @Override
-    public Node visitStandaloneRowPattern(SqlFlowStatementParser.StandaloneRowPatternContext context) {
+    public Node visitStandaloneRowPattern(SqlFlowParser.StandaloneRowPatternContext context) {
         return visit(context.rowPattern());
     }
 
     // ******************* statements **********************
 
     @Override
-    public Node visitCreateTableAsSelect(SqlFlowStatementParser.CreateTableAsSelectContext context) {
+    public Node visitCreateTableAsSelect(SqlFlowParser.CreateTableAsSelectContext context) {
         Optional<String> comment = Optional.empty();
         if (context.COMMENT() != null) {
             comment = Optional.of(((StringLiteral) visit(context.string())).getValue());
@@ -119,7 +116,7 @@ public class AstBuilder extends SqlFlowStatementBaseVisitor<Node> {
     }
 
     @Override
-    public Node visitCreateMaterializedView(SqlFlowStatementParser.CreateMaterializedViewContext context) {
+    public Node visitCreateMaterializedView(SqlFlowParser.CreateMaterializedViewContext context) {
         Optional<String> comment = Optional.empty();
         if (context.COMMENT() != null) {
             comment = Optional.of(((StringLiteral) visit(context.string())).getValue());
@@ -141,7 +138,7 @@ public class AstBuilder extends SqlFlowStatementBaseVisitor<Node> {
     }
 
     @Override
-    public Node visitInsertInto(SqlFlowStatementParser.InsertIntoContext context) {
+    public Node visitInsertInto(SqlFlowParser.InsertIntoContext context) {
         Optional<List<Identifier>> columnAliases = Optional.empty();
         if (context.columnAliases() != null) {
             columnAliases = Optional.of(visit(context.columnAliases().identifier(), Identifier.class));
@@ -154,7 +151,7 @@ public class AstBuilder extends SqlFlowStatementBaseVisitor<Node> {
     }
 
     @Override
-    public Node visitDelete(SqlFlowStatementParser.DeleteContext context) {
+    public Node visitDelete(SqlFlowParser.DeleteContext context) {
         return new Delete(
                 getLocation(context),
                 new Table(getLocation(context), getQualifiedName(context.qualifiedName())),
@@ -162,7 +159,7 @@ public class AstBuilder extends SqlFlowStatementBaseVisitor<Node> {
     }
 
     @Override
-    public Node visitUpdate(SqlFlowStatementParser.UpdateContext context) {
+    public Node visitUpdate(SqlFlowParser.UpdateContext context) {
         return new Update(
                 getLocation(context),
                 new Table(getLocation(context), getQualifiedName(context.qualifiedName())),
@@ -171,12 +168,12 @@ public class AstBuilder extends SqlFlowStatementBaseVisitor<Node> {
     }
 
     @Override
-    public Node visitUpdateAssignment(SqlFlowStatementParser.UpdateAssignmentContext context) {
+    public Node visitUpdateAssignment(SqlFlowParser.UpdateAssignmentContext context) {
         return new UpdateAssignment((Identifier) visit(context.identifier()), (Expression) visit(context.expression()));
     }
 
     @Override
-    public Node visitMerge(SqlFlowStatementParser.MergeContext context) {
+    public Node visitMerge(SqlFlowParser.MergeContext context) {
         return new Merge(
                 getLocation(context),
                 new Table(getLocation(context), getQualifiedName(context.qualifiedName())),
@@ -187,7 +184,7 @@ public class AstBuilder extends SqlFlowStatementBaseVisitor<Node> {
     }
 
     @Override
-    public Node visitMergeInsert(SqlFlowStatementParser.MergeInsertContext context) {
+    public Node visitMergeInsert(SqlFlowParser.MergeInsertContext context) {
         return new MergeInsert(
                 getLocation(context),
                 visitIfPresent(context.condition, Expression.class),
@@ -195,14 +192,14 @@ public class AstBuilder extends SqlFlowStatementBaseVisitor<Node> {
                 visit(context.values, Expression.class));
     }
 
-    private List<Identifier> visitIdentifiers(List<SqlFlowStatementParser.IdentifierContext> identifiers) {
+    private List<Identifier> visitIdentifiers(List<SqlFlowParser.IdentifierContext> identifiers) {
         return identifiers.stream()
                 .map(identifier -> (Identifier) visit(identifier))
                 .collect(toImmutableList());
     }
 
     @Override
-    public Node visitMergeUpdate(SqlFlowStatementParser.MergeUpdateContext context) {
+    public Node visitMergeUpdate(SqlFlowParser.MergeUpdateContext context) {
         ImmutableList.Builder<MergeUpdate.Assignment> assignments = ImmutableList.builder();
         for (int i = 0; i < context.targets.size(); i++) {
             assignments.add(new MergeUpdate.Assignment(
@@ -214,12 +211,12 @@ public class AstBuilder extends SqlFlowStatementBaseVisitor<Node> {
     }
 
     @Override
-    public Node visitMergeDelete(SqlFlowStatementParser.MergeDeleteContext context) {
+    public Node visitMergeDelete(SqlFlowParser.MergeDeleteContext context) {
         return new MergeDelete(getLocation(context), visitIfPresent(context.condition, Expression.class));
     }
 
     @Override
-    public Node visitCreateView(SqlFlowStatementParser.CreateViewContext context) {
+    public Node visitCreateView(SqlFlowParser.CreateViewContext context) {
         Optional<String> comment = Optional.empty();
         if (context.COMMENT() != null) {
             comment = Optional.of(((StringLiteral) visit(context.string())).getValue());
@@ -242,14 +239,14 @@ public class AstBuilder extends SqlFlowStatementBaseVisitor<Node> {
     }
 
     @Override
-    public Node visitProperty(SqlFlowStatementParser.PropertyContext context) {
+    public Node visitProperty(SqlFlowParser.PropertyContext context) {
         return new Property(getLocation(context), (Identifier) visit(context.identifier()), (Expression) visit(context.expression()));
     }
 
     // ********************** query expressions ********************
 
     @Override
-    public Node visitQuery(SqlFlowStatementParser.QueryContext context) {
+    public Node visitQuery(SqlFlowParser.QueryContext context) {
         Query body = (Query) visit(context.queryNoWith());
 
         return new Query(
@@ -262,12 +259,12 @@ public class AstBuilder extends SqlFlowStatementBaseVisitor<Node> {
     }
 
     @Override
-    public Node visitWith(SqlFlowStatementParser.WithContext context) {
+    public Node visitWith(SqlFlowParser.WithContext context) {
         return new With(getLocation(context), context.RECURSIVE() != null, visit(context.namedQuery(), WithQuery.class));
     }
 
     @Override
-    public Node visitNamedQuery(SqlFlowStatementParser.NamedQueryContext context) {
+    public Node visitNamedQuery(SqlFlowParser.NamedQueryContext context) {
         Optional<List<Identifier>> columns = Optional.empty();
         if (context.columnAliases() != null) {
             columns = Optional.of(visit(context.columnAliases().identifier(), Identifier.class));
@@ -281,7 +278,7 @@ public class AstBuilder extends SqlFlowStatementBaseVisitor<Node> {
     }
 
     @Override
-    public Node visitQueryNoWith(SqlFlowStatementParser.QueryNoWithContext context) {
+    public Node visitQueryNoWith(SqlFlowParser.QueryNoWithContext context) {
         QueryBody term = (QueryBody) visit(context.queryTerm());
 
         Optional<OrderBy> orderBy = Optional.empty();
@@ -368,7 +365,7 @@ public class AstBuilder extends SqlFlowStatementBaseVisitor<Node> {
     }
 
     @Override
-    public Node visitQuerySpecification(SqlFlowStatementParser.QuerySpecificationContext context) {
+    public Node visitQuerySpecification(SqlFlowParser.QuerySpecificationContext context) {
         Optional<Relation> from = Optional.empty();
         List<SelectItem> selectItems = visit(context.selectItem(), SelectItem.class);
 
@@ -399,34 +396,34 @@ public class AstBuilder extends SqlFlowStatementBaseVisitor<Node> {
     }
 
     @Override
-    public Node visitGroupBy(SqlFlowStatementParser.GroupByContext context) {
+    public Node visitGroupBy(SqlFlowParser.GroupByContext context) {
         return new GroupBy(getLocation(context), isDistinct(context.setQuantifier()), visit(context.groupingElement(), GroupingElement.class));
     }
 
     @Override
-    public Node visitSingleGroupingSet(SqlFlowStatementParser.SingleGroupingSetContext context) {
+    public Node visitSingleGroupingSet(SqlFlowParser.SingleGroupingSetContext context) {
         return new SimpleGroupBy(getLocation(context), visit(context.groupingSet().expression(), Expression.class));
     }
 
     @Override
-    public Node visitRollup(SqlFlowStatementParser.RollupContext context) {
+    public Node visitRollup(SqlFlowParser.RollupContext context) {
         return new Rollup(getLocation(context), visit(context.expression(), Expression.class));
     }
 
     @Override
-    public Node visitCube(SqlFlowStatementParser.CubeContext context) {
+    public Node visitCube(SqlFlowParser.CubeContext context) {
         return new Cube(getLocation(context), visit(context.expression(), Expression.class));
     }
 
     @Override
-    public Node visitMultipleGroupingSets(SqlFlowStatementParser.MultipleGroupingSetsContext context) {
+    public Node visitMultipleGroupingSets(SqlFlowParser.MultipleGroupingSetsContext context) {
         return new GroupingSets(getLocation(context), context.groupingSet().stream()
                 .map(groupingSet -> visit(groupingSet.expression(), Expression.class))
                 .collect(toList()));
     }
 
     @Override
-    public Node visitWindowSpecification(SqlFlowStatementParser.WindowSpecificationContext context) {
+    public Node visitWindowSpecification(SqlFlowParser.WindowSpecificationContext context) {
         Optional<OrderBy> orderBy = Optional.empty();
         if (context.ORDER() != null) {
             orderBy = Optional.of(new OrderBy(getLocation(context.ORDER()), visit(context.sortItem(), SortItem.class)));
@@ -441,7 +438,7 @@ public class AstBuilder extends SqlFlowStatementBaseVisitor<Node> {
     }
 
     @Override
-    public Node visitWindowDefinition(SqlFlowStatementParser.WindowDefinitionContext context) {
+    public Node visitWindowDefinition(SqlFlowParser.WindowDefinitionContext context) {
         return new WindowDefinition(
                 getLocation(context),
                 (Identifier) visit(context.name),
@@ -449,18 +446,18 @@ public class AstBuilder extends SqlFlowStatementBaseVisitor<Node> {
     }
 
     @Override
-    public Node visitSetOperation(SqlFlowStatementParser.SetOperationContext context) {
+    public Node visitSetOperation(SqlFlowParser.SetOperationContext context) {
         QueryBody left = (QueryBody) visit(context.left);
         QueryBody right = (QueryBody) visit(context.right);
 
         boolean distinct = context.setQuantifier() == null || context.setQuantifier().DISTINCT() != null;
 
         switch (context.operator.getType()) {
-            case SqlFlowStatementLexer.UNION:
+            case SqlFlowLexer.UNION:
                 return new Union(getLocation(context.UNION()), ImmutableList.of(left, right), distinct);
-            case SqlFlowStatementLexer.INTERSECT:
+            case SqlFlowLexer.INTERSECT:
                 return new Intersect(getLocation(context.INTERSECT()), ImmutableList.of(left, right), distinct);
-            case SqlFlowStatementLexer.EXCEPT:
+            case SqlFlowLexer.EXCEPT:
                 return new Except(getLocation(context.EXCEPT()), left, right, distinct);
         }
 
@@ -468,7 +465,7 @@ public class AstBuilder extends SqlFlowStatementBaseVisitor<Node> {
     }
 
     @Override
-    public Node visitSelectAll(SqlFlowStatementParser.SelectAllContext context) {
+    public Node visitSelectAll(SqlFlowParser.SelectAllContext context) {
         List<Identifier> aliases = ImmutableList.of();
         if (context.columnAliases() != null) {
             aliases = visit(context.columnAliases().identifier(), Identifier.class);
@@ -481,7 +478,7 @@ public class AstBuilder extends SqlFlowStatementBaseVisitor<Node> {
     }
 
     @Override
-    public Node visitSelectSingle(SqlFlowStatementParser.SelectSingleContext context) {
+    public Node visitSelectSingle(SqlFlowParser.SelectSingleContext context) {
         return new SingleColumn(
                 getLocation(context),
                 (Expression) visit(context.expression()),
@@ -489,32 +486,32 @@ public class AstBuilder extends SqlFlowStatementBaseVisitor<Node> {
     }
 
     @Override
-    public Node visitTable(SqlFlowStatementParser.TableContext context) {
+    public Node visitTable(SqlFlowParser.TableContext context) {
         return new Table(getLocation(context), getQualifiedName(context.qualifiedName()));
     }
 
     @Override
-    public Node visitSubquery(SqlFlowStatementParser.SubqueryContext context) {
+    public Node visitSubquery(SqlFlowParser.SubqueryContext context) {
         return new TableSubquery(getLocation(context), (Query) visit(context.queryNoWith()));
     }
 
     @Override
-    public Node visitInlineTable(SqlFlowStatementParser.InlineTableContext context) {
+    public Node visitInlineTable(SqlFlowParser.InlineTableContext context) {
         return new Values(getLocation(context), visit(context.expression(), Expression.class));
     }
 
     // ***************** boolean expressions ******************
 
     @Override
-    public Node visitLogicalNot(SqlFlowStatementParser.LogicalNotContext context) {
+    public Node visitLogicalNot(SqlFlowParser.LogicalNotContext context) {
         return new NotExpression(getLocation(context), (Expression) visit(context.booleanExpression()));
     }
 
     @Override
-    public Node visitOr(SqlFlowStatementParser.OrContext context) {
+    public Node visitOr(SqlFlowParser.OrContext context) {
         List<ParserRuleContext> terms = flatten(context, element -> {
-            if (element instanceof SqlFlowStatementParser.OrContext) {
-                SqlFlowStatementParser.OrContext or = (SqlFlowStatementParser.OrContext) element;
+            if (element instanceof SqlFlowParser.OrContext) {
+                SqlFlowParser.OrContext or = (SqlFlowParser.OrContext) element;
                 return Optional.of(or.booleanExpression());
             }
 
@@ -525,10 +522,10 @@ public class AstBuilder extends SqlFlowStatementBaseVisitor<Node> {
     }
 
     @Override
-    public Node visitAnd(SqlFlowStatementParser.AndContext context) {
+    public Node visitAnd(SqlFlowParser.AndContext context) {
         List<ParserRuleContext> terms = flatten(context, element -> {
-            if (element instanceof SqlFlowStatementParser.AndContext) {
-                SqlFlowStatementParser.AndContext and = (SqlFlowStatementParser.AndContext) element;
+            if (element instanceof SqlFlowParser.AndContext) {
+                SqlFlowParser.AndContext and = (SqlFlowParser.AndContext) element;
                 return Optional.of(and.booleanExpression());
             }
 
@@ -562,7 +559,7 @@ public class AstBuilder extends SqlFlowStatementBaseVisitor<Node> {
     // *************** from clause *****************
 
     @Override
-    public Node visitJoinRelation(SqlFlowStatementParser.JoinRelationContext context) {
+    public Node visitJoinRelation(SqlFlowParser.JoinRelationContext context) {
         Relation left = (Relation) visit(context.left);
         Relation right;
 
@@ -601,7 +598,7 @@ public class AstBuilder extends SqlFlowStatementBaseVisitor<Node> {
     }
 
     @Override
-    public Node visitSampledRelation(SqlFlowStatementParser.SampledRelationContext context) {
+    public Node visitSampledRelation(SqlFlowParser.SampledRelationContext context) {
         Relation child = (Relation) visit(context.patternRecognition());
 
         if (context.TABLESAMPLE() == null) {
@@ -616,7 +613,7 @@ public class AstBuilder extends SqlFlowStatementBaseVisitor<Node> {
     }
 
     @Override
-    public Node visitPatternRecognition(SqlFlowStatementParser.PatternRecognitionContext context) {
+    public Node visitPatternRecognition(SqlFlowParser.PatternRecognitionContext context) {
         Relation child = (Relation) visit(context.aliasedRelation());
 
         if (context.MATCH_RECOGNIZE() == null) {
@@ -661,11 +658,11 @@ public class AstBuilder extends SqlFlowStatementBaseVisitor<Node> {
     }
 
     @Override
-    public Node visitMeasureDefinition(SqlFlowStatementParser.MeasureDefinitionContext context) {
+    public Node visitMeasureDefinition(SqlFlowParser.MeasureDefinitionContext context) {
         return new MeasureDefinition(getLocation(context), (Expression) visit(context.expression()), (Identifier) visit(context.identifier()));
     }
 
-    private Optional<PatternRecognitionRelation.RowsPerMatch> getRowsPerMatch(SqlFlowStatementParser.RowsPerMatchContext context) {
+    private Optional<PatternRecognitionRelation.RowsPerMatch> getRowsPerMatch(SqlFlowParser.RowsPerMatchContext context) {
         if (context == null) {
             return Optional.empty();
         }
@@ -690,7 +687,7 @@ public class AstBuilder extends SqlFlowStatementBaseVisitor<Node> {
     }
 
     @Override
-    public Node visitSkipTo(SqlFlowStatementParser.SkipToContext context) {
+    public Node visitSkipTo(SqlFlowParser.SkipToContext context) {
         if (context.PAST() != null) {
             return skipPastLastRow(getLocation(context));
         }
@@ -707,17 +704,17 @@ public class AstBuilder extends SqlFlowStatementBaseVisitor<Node> {
     }
 
     @Override
-    public Node visitSubsetDefinition(SqlFlowStatementParser.SubsetDefinitionContext context) {
+    public Node visitSubsetDefinition(SqlFlowParser.SubsetDefinitionContext context) {
         return new SubsetDefinition(getLocation(context), (Identifier) visit(context.name), visit(context.union, Identifier.class));
     }
 
     @Override
-    public Node visitVariableDefinition(SqlFlowStatementParser.VariableDefinitionContext context) {
+    public Node visitVariableDefinition(SqlFlowParser.VariableDefinitionContext context) {
         return new VariableDefinition(getLocation(context), (Identifier) visit(context.identifier()), (Expression) visit(context.expression()));
     }
 
     @Override
-    public Node visitAliasedRelation(SqlFlowStatementParser.AliasedRelationContext context) {
+    public Node visitAliasedRelation(SqlFlowParser.AliasedRelationContext context) {
         Relation child = (Relation) visit(context.relationPrimary());
 
         if (context.identifier() == null) {
@@ -733,7 +730,7 @@ public class AstBuilder extends SqlFlowStatementBaseVisitor<Node> {
     }
 
     @Override
-    public Node visitTableName(SqlFlowStatementParser.TableNameContext context) {
+    public Node visitTableName(SqlFlowParser.TableNameContext context) {
         if (context.queryPeriod() != null) {
             return new Table(getLocation(context), getQualifiedName(context.qualifiedName()), (QueryPeriod) visit(context.queryPeriod()));
         }
@@ -741,29 +738,29 @@ public class AstBuilder extends SqlFlowStatementBaseVisitor<Node> {
     }
 
     @Override
-    public Node visitSubqueryRelation(SqlFlowStatementParser.SubqueryRelationContext context) {
+    public Node visitSubqueryRelation(SqlFlowParser.SubqueryRelationContext context) {
         return new TableSubquery(getLocation(context), (Query) visit(context.query()));
     }
 
     @Override
-    public Node visitUnnest(SqlFlowStatementParser.UnnestContext context) {
+    public Node visitUnnest(SqlFlowParser.UnnestContext context) {
         return new Unnest(getLocation(context), visit(context.expression(), Expression.class), context.ORDINALITY() != null);
     }
 
     @Override
-    public Node visitLateral(SqlFlowStatementParser.LateralContext context) {
+    public Node visitLateral(SqlFlowParser.LateralContext context) {
         return new Lateral(getLocation(context), (Query) visit(context.query()));
     }
 
     @Override
-    public Node visitParenthesizedRelation(SqlFlowStatementParser.ParenthesizedRelationContext context) {
+    public Node visitParenthesizedRelation(SqlFlowParser.ParenthesizedRelationContext context) {
         return visit(context.relation());
     }
 
     // ********************* predicates *******************
 
     @Override
-    public Node visitPredicated(SqlFlowStatementParser.PredicatedContext context) {
+    public Node visitPredicated(SqlFlowParser.PredicatedContext context) {
         if (context.predicate() != null) {
             return visit(context.predicate());
         }
@@ -772,7 +769,7 @@ public class AstBuilder extends SqlFlowStatementBaseVisitor<Node> {
     }
 
     @Override
-    public Node visitComparison(SqlFlowStatementParser.ComparisonContext context) {
+    public Node visitComparison(SqlFlowParser.ComparisonContext context) {
         return new ComparisonExpression(
                 getLocation(context.comparisonOperator()),
                 getComparisonOperator(((TerminalNode) context.comparisonOperator().getChild(0)).getSymbol()),
@@ -781,7 +778,7 @@ public class AstBuilder extends SqlFlowStatementBaseVisitor<Node> {
     }
 
     @Override
-    public Node visitDistinctFrom(SqlFlowStatementParser.DistinctFromContext context) {
+    public Node visitDistinctFrom(SqlFlowParser.DistinctFromContext context) {
         Expression expression = new ComparisonExpression(
                 getLocation(context),
                 ComparisonExpression.Operator.IS_DISTINCT_FROM,
@@ -796,7 +793,7 @@ public class AstBuilder extends SqlFlowStatementBaseVisitor<Node> {
     }
 
     @Override
-    public Node visitBetween(SqlFlowStatementParser.BetweenContext context) {
+    public Node visitBetween(SqlFlowParser.BetweenContext context) {
         Expression expression = new BetweenPredicate(
                 getLocation(context),
                 (Expression) visit(context.value),
@@ -811,7 +808,7 @@ public class AstBuilder extends SqlFlowStatementBaseVisitor<Node> {
     }
 
     @Override
-    public Node visitNullPredicate(SqlFlowStatementParser.NullPredicateContext context) {
+    public Node visitNullPredicate(SqlFlowParser.NullPredicateContext context) {
         Expression child = (Expression) visit(context.value);
 
         if (context.NOT() == null) {
@@ -822,7 +819,7 @@ public class AstBuilder extends SqlFlowStatementBaseVisitor<Node> {
     }
 
     @Override
-    public Node visitLike(SqlFlowStatementParser.LikeContext context) {
+    public Node visitLike(SqlFlowParser.LikeContext context) {
         Expression result = new LikePredicate(
                 getLocation(context),
                 (Expression) visit(context.value),
@@ -837,7 +834,7 @@ public class AstBuilder extends SqlFlowStatementBaseVisitor<Node> {
     }
 
     @Override
-    public Node visitInList(SqlFlowStatementParser.InListContext context) {
+    public Node visitInList(SqlFlowParser.InListContext context) {
         Expression result = new InPredicate(
                 getLocation(context),
                 (Expression) visit(context.value),
@@ -851,7 +848,7 @@ public class AstBuilder extends SqlFlowStatementBaseVisitor<Node> {
     }
 
     @Override
-    public Node visitInSubquery(SqlFlowStatementParser.InSubqueryContext context) {
+    public Node visitInSubquery(SqlFlowParser.InSubqueryContext context) {
         Expression result = new InPredicate(
                 getLocation(context),
                 (Expression) visit(context.value),
@@ -865,12 +862,12 @@ public class AstBuilder extends SqlFlowStatementBaseVisitor<Node> {
     }
 
     @Override
-    public Node visitExists(SqlFlowStatementParser.ExistsContext context) {
+    public Node visitExists(SqlFlowParser.ExistsContext context) {
         return new ExistsPredicate(getLocation(context), new SubqueryExpression(getLocation(context), (Query) visit(context.query())));
     }
 
     @Override
-    public Node visitQuantifiedComparison(SqlFlowStatementParser.QuantifiedComparisonContext context) {
+    public Node visitQuantifiedComparison(SqlFlowParser.QuantifiedComparisonContext context) {
         return new QuantifiedComparisonExpression(
                 getLocation(context.comparisonOperator()),
                 getComparisonOperator(((TerminalNode) context.comparisonOperator().getChild(0)).getSymbol()),
@@ -882,13 +879,13 @@ public class AstBuilder extends SqlFlowStatementBaseVisitor<Node> {
     // ************** value expressions **************
 
     @Override
-    public Node visitArithmeticUnary(SqlFlowStatementParser.ArithmeticUnaryContext context) {
+    public Node visitArithmeticUnary(SqlFlowParser.ArithmeticUnaryContext context) {
         Expression child = (Expression) visit(context.valueExpression());
 
         switch (context.operator.getType()) {
-            case SqlFlowStatementLexer.MINUS:
+            case SqlFlowLexer.MINUS:
                 return ArithmeticUnaryExpression.negative(getLocation(context), child);
-            case SqlFlowStatementLexer.PLUS:
+            case SqlFlowLexer.PLUS:
                 return ArithmeticUnaryExpression.positive(getLocation(context), child);
             default:
                 throw new UnsupportedOperationException("Unsupported sign: " + context.operator.getText());
@@ -896,7 +893,7 @@ public class AstBuilder extends SqlFlowStatementBaseVisitor<Node> {
     }
 
     @Override
-    public Node visitArithmeticBinary(SqlFlowStatementParser.ArithmeticBinaryContext context) {
+    public Node visitArithmeticBinary(SqlFlowParser.ArithmeticBinaryContext context) {
         return new ArithmeticBinaryExpression(
                 getLocation(context.operator),
                 getArithmeticBinaryOperator(context.operator),
@@ -905,7 +902,7 @@ public class AstBuilder extends SqlFlowStatementBaseVisitor<Node> {
     }
 
     @Override
-    public Node visitConcatenation(SqlFlowStatementParser.ConcatenationContext context) {
+    public Node visitConcatenation(SqlFlowParser.ConcatenationContext context) {
         return new FunctionCall(
                 getLocation(context.CONCAT()),
                 QualifiedName.of("concat"), ImmutableList.of(
@@ -914,7 +911,7 @@ public class AstBuilder extends SqlFlowStatementBaseVisitor<Node> {
     }
 
     @Override
-    public Node visitAtTimeZone(SqlFlowStatementParser.AtTimeZoneContext context) {
+    public Node visitAtTimeZone(SqlFlowParser.AtTimeZoneContext context) {
         return new AtTimeZone(
                 getLocation(context.AT()),
                 (Expression) visit(context.valueExpression()),
@@ -922,40 +919,40 @@ public class AstBuilder extends SqlFlowStatementBaseVisitor<Node> {
     }
 
     @Override
-    public Node visitTimeZoneInterval(SqlFlowStatementParser.TimeZoneIntervalContext context) {
+    public Node visitTimeZoneInterval(SqlFlowParser.TimeZoneIntervalContext context) {
         return visit(context.interval());
     }
 
     @Override
-    public Node visitTimeZoneString(SqlFlowStatementParser.TimeZoneStringContext context) {
+    public Node visitTimeZoneString(SqlFlowParser.TimeZoneStringContext context) {
         return visit(context.string());
     }
 
     // ********************* primary expressions **********************
 
     @Override
-    public Node visitParenthesizedExpression(SqlFlowStatementParser.ParenthesizedExpressionContext context) {
+    public Node visitParenthesizedExpression(SqlFlowParser.ParenthesizedExpressionContext context) {
         return visit(context.expression());
     }
 
     @Override
-    public Node visitRowConstructor(SqlFlowStatementParser.RowConstructorContext context) {
+    public Node visitRowConstructor(SqlFlowParser.RowConstructorContext context) {
         return new Row(getLocation(context), visit(context.expression(), Expression.class));
     }
 
     @Override
-    public Node visitArrayConstructor(SqlFlowStatementParser.ArrayConstructorContext context) {
+    public Node visitArrayConstructor(SqlFlowParser.ArrayConstructorContext context) {
         return new ArrayConstructor(getLocation(context), visit(context.expression(), Expression.class));
     }
 
     @Override
-    public Node visitCast(SqlFlowStatementParser.CastContext context) {
+    public Node visitCast(SqlFlowParser.CastContext context) {
         boolean isTryCast = context.TRY_CAST() != null;
         return new Cast(getLocation(context), (Expression) visit(context.expression()), (DataType) visit(context.type()), isTryCast);
     }
 
     @Override
-    public Node visitSpecialDateTimeFunction(SqlFlowStatementParser.SpecialDateTimeFunctionContext context) {
+    public Node visitSpecialDateTimeFunction(SqlFlowParser.SpecialDateTimeFunctionContext context) {
         CurrentTime.Function function = getDateTimeFunctionType(context.name);
 
         if (context.precision != null) {
@@ -966,27 +963,27 @@ public class AstBuilder extends SqlFlowStatementBaseVisitor<Node> {
     }
 
     @Override
-    public Node visitCurrentCatalog(SqlFlowStatementParser.CurrentCatalogContext context) {
+    public Node visitCurrentCatalog(SqlFlowParser.CurrentCatalogContext context) {
         return new CurrentCatalog(getLocation(context.CURRENT_CATALOG()));
     }
 
     @Override
-    public Node visitCurrentSchema(SqlFlowStatementParser.CurrentSchemaContext context) {
+    public Node visitCurrentSchema(SqlFlowParser.CurrentSchemaContext context) {
         return new CurrentSchema(getLocation(context.CURRENT_SCHEMA()));
     }
 
     @Override
-    public Node visitCurrentUser(SqlFlowStatementParser.CurrentUserContext context) {
+    public Node visitCurrentUser(SqlFlowParser.CurrentUserContext context) {
         return new CurrentUser(getLocation(context.CURRENT_USER()));
     }
 
     @Override
-    public Node visitCurrentPath(SqlFlowStatementParser.CurrentPathContext context) {
+    public Node visitCurrentPath(SqlFlowParser.CurrentPathContext context) {
         return new CurrentPath(getLocation(context.CURRENT_PATH()));
     }
 
     @Override
-    public Node visitExtract(SqlFlowStatementParser.ExtractContext context) {
+    public Node visitExtract(SqlFlowParser.ExtractContext context) {
         String fieldString = context.identifier().getText();
         Extract.Field field;
         try {
@@ -1008,7 +1005,7 @@ public class AstBuilder extends SqlFlowStatementBaseVisitor<Node> {
      * @param context `LISTAGG` expression context
      */
     @Override
-    public Node visitListagg(SqlFlowStatementParser.ListaggContext context) {
+    public Node visitListagg(SqlFlowParser.ListaggContext context) {
         Optional<Window> window = Optional.empty();
         OrderBy orderBy = new OrderBy(visit(context.sortItem(), SortItem.class));
         boolean distinct = isDistinct(context.setQuantifier());
@@ -1019,7 +1016,7 @@ public class AstBuilder extends SqlFlowStatementBaseVisitor<Node> {
         StringLiteral overflowFiller = new StringLiteral(getLocation(context), "...");
         BooleanLiteral showOverflowEntryCount = new BooleanLiteral(getLocation(context), "false");
 
-        SqlFlowStatementParser.ListAggOverflowBehaviorContext overflowBehavior = context.listAggOverflowBehavior();
+        SqlFlowParser.ListAggOverflowBehaviorContext overflowBehavior = context.listAggOverflowBehavior();
         if (overflowBehavior != null) {
             if (overflowBehavior.ERROR() != null) {
                 overflowError = new BooleanLiteral(getLocation(context), "true");
@@ -1028,7 +1025,7 @@ public class AstBuilder extends SqlFlowStatementBaseVisitor<Node> {
                 if (overflowBehavior.string() != null) {
                     overflowFiller = (StringLiteral) (visit(overflowBehavior.string()));
                 }
-                SqlFlowStatementParser.ListaggCountIndicationContext listaggCountIndicationContext = overflowBehavior.listaggCountIndication();
+                SqlFlowParser.ListaggCountIndicationContext listaggCountIndicationContext = overflowBehavior.listaggCountIndication();
                 if (listaggCountIndicationContext.WITH() != null) {
                     showOverflowEntryCount = new BooleanLiteral(getLocation(context), "true");
                 } else if (listaggCountIndicationContext.WITHOUT() != null) {
@@ -1053,18 +1050,18 @@ public class AstBuilder extends SqlFlowStatementBaseVisitor<Node> {
     }
 
     @Override
-    public Node visitSubstring(SqlFlowStatementParser.SubstringContext context) {
+    public Node visitSubstring(SqlFlowParser.SubstringContext context) {
         return new FunctionCall(getLocation(context), QualifiedName.of("substr"), visit(context.valueExpression(), Expression.class));
     }
 
     @Override
-    public Node visitPosition(SqlFlowStatementParser.PositionContext context) {
+    public Node visitPosition(SqlFlowParser.PositionContext context) {
         List<Expression> arguments = Lists.reverse(visit(context.valueExpression(), Expression.class));
         return new FunctionCall(getLocation(context), QualifiedName.of("strpos"), arguments);
     }
 
     @Override
-    public Node visitNormalize(SqlFlowStatementParser.NormalizeContext context) {
+    public Node visitNormalize(SqlFlowParser.NormalizeContext context) {
         Expression str = (Expression) visit(context.valueExpression());
         String normalForm = Optional.ofNullable(context.normalForm()).map(ParserRuleContext::getText).orElse("NFC");
         return new FunctionCall(
@@ -1074,17 +1071,17 @@ public class AstBuilder extends SqlFlowStatementBaseVisitor<Node> {
     }
 
     @Override
-    public Node visitSubscript(SqlFlowStatementParser.SubscriptContext context) {
+    public Node visitSubscript(SqlFlowParser.SubscriptContext context) {
         return new SubscriptExpression(getLocation(context), (Expression) visit(context.value), (Expression) visit(context.index));
     }
 
     @Override
-    public Node visitSubqueryExpression(SqlFlowStatementParser.SubqueryExpressionContext context) {
+    public Node visitSubqueryExpression(SqlFlowParser.SubqueryExpressionContext context) {
         return new SubqueryExpression(getLocation(context), (Query) visit(context.query()));
     }
 
     @Override
-    public Node visitDereference(SqlFlowStatementParser.DereferenceContext context) {
+    public Node visitDereference(SqlFlowParser.DereferenceContext context) {
         return new DereferenceExpression(
                 getLocation(context),
                 (Expression) visit(context.base),
@@ -1092,12 +1089,12 @@ public class AstBuilder extends SqlFlowStatementBaseVisitor<Node> {
     }
 
     @Override
-    public Node visitColumnReference(SqlFlowStatementParser.ColumnReferenceContext context) {
+    public Node visitColumnReference(SqlFlowParser.ColumnReferenceContext context) {
         return visit(context.identifier());
     }
 
     @Override
-    public Node visitSimpleCase(SqlFlowStatementParser.SimpleCaseContext context) {
+    public Node visitSimpleCase(SqlFlowParser.SimpleCaseContext context) {
         return new SimpleCaseExpression(
                 getLocation(context),
                 (Expression) visit(context.operand),
@@ -1106,7 +1103,7 @@ public class AstBuilder extends SqlFlowStatementBaseVisitor<Node> {
     }
 
     @Override
-    public Node visitSearchedCase(SqlFlowStatementParser.SearchedCaseContext context) {
+    public Node visitSearchedCase(SqlFlowParser.SearchedCaseContext context) {
         return new SearchedCaseExpression(
                 getLocation(context),
                 visit(context.whenClause(), WhenClause.class),
@@ -1114,12 +1111,12 @@ public class AstBuilder extends SqlFlowStatementBaseVisitor<Node> {
     }
 
     @Override
-    public Node visitWhenClause(SqlFlowStatementParser.WhenClauseContext context) {
+    public Node visitWhenClause(SqlFlowParser.WhenClauseContext context) {
         return new WhenClause(getLocation(context), (Expression) visit(context.condition), (Expression) visit(context.result));
     }
 
     @Override
-    public Node visitFunctionCall(SqlFlowStatementParser.FunctionCallContext context) {
+    public Node visitFunctionCall(SqlFlowParser.FunctionCallContext context) {
         Optional<Expression> filter = visitIfPresent(context.filter(), Expression.class);
         Optional<Window> window = visitIfPresent(context.over(), Window.class);
 
@@ -1132,9 +1129,9 @@ public class AstBuilder extends SqlFlowStatementBaseVisitor<Node> {
 
         boolean distinct = isDistinct(context.setQuantifier());
 
-        SqlFlowStatementParser.NullTreatmentContext nullTreatment = context.nullTreatment();
+        SqlFlowParser.NullTreatmentContext nullTreatment = context.nullTreatment();
 
-        SqlFlowStatementParser.ProcessingModeContext processingMode = context.processingMode();
+        SqlFlowParser.ProcessingModeContext processingMode = context.processingMode();
 
         if (name.toString().equalsIgnoreCase("if")) {
             check(context.expression().size() == 2 || context.expression().size() == 3, "Invalid number of arguments for 'if' function", context);
@@ -1259,12 +1256,12 @@ public class AstBuilder extends SqlFlowStatementBaseVisitor<Node> {
     }
 
     @Override
-    public Node visitMeasure(SqlFlowStatementParser.MeasureContext context) {
+    public Node visitMeasure(SqlFlowParser.MeasureContext context) {
         return new WindowOperation(getLocation(context), (Identifier) visit(context.identifier()), (Window) visit(context.over()));
     }
 
     @Override
-    public Node visitLambda(SqlFlowStatementParser.LambdaContext context) {
+    public Node visitLambda(SqlFlowParser.LambdaContext context) {
         List<LambdaArgumentDeclaration> arguments = visit(context.identifier(), Identifier.class).stream()
                 .map(LambdaArgumentDeclaration::new)
                 .collect(toList());
@@ -1275,12 +1272,12 @@ public class AstBuilder extends SqlFlowStatementBaseVisitor<Node> {
     }
 
     @Override
-    public Node visitFilter(SqlFlowStatementParser.FilterContext context) {
+    public Node visitFilter(SqlFlowParser.FilterContext context) {
         return visit(context.booleanExpression());
     }
 
     @Override
-    public Node visitOver(SqlFlowStatementParser.OverContext context) {
+    public Node visitOver(SqlFlowParser.OverContext context) {
         if (context.windowName != null) {
             return new WindowReference(getLocation(context), (Identifier) visit(context.windowName));
         }
@@ -1289,7 +1286,7 @@ public class AstBuilder extends SqlFlowStatementBaseVisitor<Node> {
     }
 
     @Override
-    public Node visitSortItem(SqlFlowStatementParser.SortItemContext context) {
+    public Node visitSortItem(SqlFlowParser.SortItemContext context) {
         return new SortItem(
                 getLocation(context),
                 (Expression) visit(context.expression()),
@@ -1302,7 +1299,7 @@ public class AstBuilder extends SqlFlowStatementBaseVisitor<Node> {
     }
 
     @Override
-    public Node visitWindowFrame(SqlFlowStatementParser.WindowFrameContext context) {
+    public Node visitWindowFrame(SqlFlowParser.WindowFrameContext context) {
         Optional<PatternSearchMode> searchMode = Optional.empty();
         if (context.INITIAL() != null) {
             searchMode = Optional.of(new PatternSearchMode(getLocation(context.INITIAL()), INITIAL));
@@ -1324,22 +1321,22 @@ public class AstBuilder extends SqlFlowStatementBaseVisitor<Node> {
     }
 
     @Override
-    public Node visitUnboundedFrame(SqlFlowStatementParser.UnboundedFrameContext context) {
+    public Node visitUnboundedFrame(SqlFlowParser.UnboundedFrameContext context) {
         return new FrameBound(getLocation(context), getUnboundedFrameBoundType(context.boundType));
     }
 
     @Override
-    public Node visitBoundedFrame(SqlFlowStatementParser.BoundedFrameContext context) {
+    public Node visitBoundedFrame(SqlFlowParser.BoundedFrameContext context) {
         return new FrameBound(getLocation(context), getBoundedFrameBoundType(context.boundType), (Expression) visit(context.expression()));
     }
 
     @Override
-    public Node visitCurrentRowBound(SqlFlowStatementParser.CurrentRowBoundContext context) {
+    public Node visitCurrentRowBound(SqlFlowParser.CurrentRowBoundContext context) {
         return new FrameBound(getLocation(context), FrameBound.Type.CURRENT_ROW);
     }
 
     @Override
-    public Node visitGroupingOperation(SqlFlowStatementParser.GroupingOperationContext context) {
+    public Node visitGroupingOperation(SqlFlowParser.GroupingOperationContext context) {
         List<QualifiedName> arguments = context.qualifiedName().stream()
                 .map(this::getQualifiedName)
                 .collect(toList());
@@ -1348,12 +1345,12 @@ public class AstBuilder extends SqlFlowStatementBaseVisitor<Node> {
     }
 
     @Override
-    public Node visitUnquotedIdentifier(SqlFlowStatementParser.UnquotedIdentifierContext context) {
+    public Node visitUnquotedIdentifier(SqlFlowParser.UnquotedIdentifierContext context) {
         return new Identifier(getLocation(context), context.getText(), false);
     }
 
     @Override
-    public Node visitQuotedIdentifier(SqlFlowStatementParser.QuotedIdentifierContext context) {
+    public Node visitQuotedIdentifier(SqlFlowParser.QuotedIdentifierContext context) {
         String token = context.getText();
         String identifier = token.substring(1, token.length() - 1)
                 .replace("\"\"", "\"");
@@ -1362,19 +1359,19 @@ public class AstBuilder extends SqlFlowStatementBaseVisitor<Node> {
     }
 
     @Override
-    public Node visitPatternAlternation(SqlFlowStatementParser.PatternAlternationContext context) {
+    public Node visitPatternAlternation(SqlFlowParser.PatternAlternationContext context) {
         List<RowPattern> parts = visit(context.rowPattern(), RowPattern.class);
         return new PatternAlternation(getLocation(context), parts);
     }
 
     @Override
-    public Node visitPatternConcatenation(SqlFlowStatementParser.PatternConcatenationContext context) {
+    public Node visitPatternConcatenation(SqlFlowParser.PatternConcatenationContext context) {
         List<RowPattern> parts = visit(context.rowPattern(), RowPattern.class);
         return new PatternConcatenation(getLocation(context), parts);
     }
 
     @Override
-    public Node visitQuantifiedPrimary(SqlFlowStatementParser.QuantifiedPrimaryContext context) {
+    public Node visitQuantifiedPrimary(SqlFlowParser.QuantifiedPrimaryContext context) {
         RowPattern primary = (RowPattern) visit(context.patternPrimary());
         if (context.patternQuantifier() != null) {
             return new QuantifiedPattern(getLocation(context), primary, (PatternQuantifier) visit(context.patternQuantifier()));
@@ -1383,61 +1380,61 @@ public class AstBuilder extends SqlFlowStatementBaseVisitor<Node> {
     }
 
     @Override
-    public Node visitPatternVariable(SqlFlowStatementParser.PatternVariableContext context) {
+    public Node visitPatternVariable(SqlFlowParser.PatternVariableContext context) {
         return new PatternVariable(getLocation(context), (Identifier) visit(context.identifier()));
     }
 
     @Override
-    public Node visitEmptyPattern(SqlFlowStatementParser.EmptyPatternContext context) {
+    public Node visitEmptyPattern(SqlFlowParser.EmptyPatternContext context) {
         return new EmptyPattern(getLocation(context));
     }
 
     @Override
-    public Node visitPatternPermutation(SqlFlowStatementParser.PatternPermutationContext context) {
+    public Node visitPatternPermutation(SqlFlowParser.PatternPermutationContext context) {
         return new PatternPermutation(getLocation(context), visit(context.rowPattern(), RowPattern.class));
     }
 
     @Override
-    public Node visitGroupedPattern(SqlFlowStatementParser.GroupedPatternContext context) {
+    public Node visitGroupedPattern(SqlFlowParser.GroupedPatternContext context) {
         // skip parentheses
         return visit(context.rowPattern());
     }
 
     @Override
-    public Node visitPartitionStartAnchor(SqlFlowStatementParser.PartitionStartAnchorContext context) {
+    public Node visitPartitionStartAnchor(SqlFlowParser.PartitionStartAnchorContext context) {
         return new AnchorPattern(getLocation(context), PARTITION_START);
     }
 
     @Override
-    public Node visitPartitionEndAnchor(SqlFlowStatementParser.PartitionEndAnchorContext context) {
+    public Node visitPartitionEndAnchor(SqlFlowParser.PartitionEndAnchorContext context) {
         return new AnchorPattern(getLocation(context), PARTITION_END);
     }
 
-    @Override
-    public Node visitExcludedPattern(SqlFlowStatementParser.ExcludedPatternContext context) {
+    /*@Override
+    public Node visitExcludedPattern(SqlFlowParser.ExcludedPatternContext context) {
         return new ExcludedPattern(getLocation(context), (RowPattern) visit(context.rowPattern()));
-    }
+    }*/
 
     @Override
-    public Node visitZeroOrMoreQuantifier(SqlFlowStatementParser.ZeroOrMoreQuantifierContext context) {
+    public Node visitZeroOrMoreQuantifier(SqlFlowParser.ZeroOrMoreQuantifierContext context) {
         boolean greedy = context.reluctant == null;
         return new ZeroOrMoreQuantifier(getLocation(context), greedy);
     }
 
     @Override
-    public Node visitOneOrMoreQuantifier(SqlFlowStatementParser.OneOrMoreQuantifierContext context) {
+    public Node visitOneOrMoreQuantifier(SqlFlowParser.OneOrMoreQuantifierContext context) {
         boolean greedy = context.reluctant == null;
         return new OneOrMoreQuantifier(getLocation(context), greedy);
     }
 
     @Override
-    public Node visitZeroOrOneQuantifier(SqlFlowStatementParser.ZeroOrOneQuantifierContext context) {
+    public Node visitZeroOrOneQuantifier(SqlFlowParser.ZeroOrOneQuantifierContext context) {
         boolean greedy = context.reluctant == null;
         return new ZeroOrOneQuantifier(getLocation(context), greedy);
     }
 
     @Override
-    public Node visitRangeQuantifier(SqlFlowStatementParser.RangeQuantifierContext context) {
+    public Node visitRangeQuantifier(SqlFlowParser.RangeQuantifierContext context) {
         boolean greedy = context.reluctant == null;
 
         Optional<LongLiteral> atLeast = Optional.empty();
@@ -1458,28 +1455,28 @@ public class AstBuilder extends SqlFlowStatementBaseVisitor<Node> {
     // ************** literals **************
 
     @Override
-    public Node visitNullLiteral(SqlFlowStatementParser.NullLiteralContext context) {
+    public Node visitNullLiteral(SqlFlowParser.NullLiteralContext context) {
         return new NullLiteral(getLocation(context));
     }
 
     @Override
-    public Node visitBasicStringLiteral(SqlFlowStatementParser.BasicStringLiteralContext context) {
+    public Node visitBasicStringLiteral(SqlFlowParser.BasicStringLiteralContext context) {
         return new StringLiteral(getLocation(context), unquote(context.STRING().getText()));
     }
 
     @Override
-    public Node visitUnicodeStringLiteral(SqlFlowStatementParser.UnicodeStringLiteralContext context) {
+    public Node visitUnicodeStringLiteral(SqlFlowParser.UnicodeStringLiteralContext context) {
         return new StringLiteral(getLocation(context), decodeUnicodeLiteral(context));
     }
 
     @Override
-    public Node visitBinaryLiteral(SqlFlowStatementParser.BinaryLiteralContext context) {
+    public Node visitBinaryLiteral(SqlFlowParser.BinaryLiteralContext context) {
         String raw = context.BINARY_LITERAL().getText();
         return new BinaryLiteral(getLocation(context), unquote(raw.substring(1)));
     }
 
     @Override
-    public Node visitTypeConstructor(SqlFlowStatementParser.TypeConstructorContext context) {
+    public Node visitTypeConstructor(SqlFlowParser.TypeConstructorContext context) {
         String value = ((StringLiteral) visit(context.string())).getValue();
 
         if (context.DOUBLE() != null) {
@@ -1505,12 +1502,12 @@ public class AstBuilder extends SqlFlowStatementBaseVisitor<Node> {
     }
 
     @Override
-    public Node visitIntegerLiteral(SqlFlowStatementParser.IntegerLiteralContext context) {
+    public Node visitIntegerLiteral(SqlFlowParser.IntegerLiteralContext context) {
         return new LongLiteral(getLocation(context), context.getText());
     }
 
     @Override
-    public Node visitDecimalLiteral(SqlFlowStatementParser.DecimalLiteralContext context) {
+    public Node visitDecimalLiteral(SqlFlowParser.DecimalLiteralContext context) {
         switch (parsingOptions.getDecimalLiteralTreatment()) {
             case AS_DOUBLE:
                 return new DoubleLiteral(getLocation(context), context.getText());
@@ -1523,17 +1520,17 @@ public class AstBuilder extends SqlFlowStatementBaseVisitor<Node> {
     }
 
     @Override
-    public Node visitDoubleLiteral(SqlFlowStatementParser.DoubleLiteralContext context) {
+    public Node visitDoubleLiteral(SqlFlowParser.DoubleLiteralContext context) {
         return new DoubleLiteral(getLocation(context), context.getText());
     }
 
     @Override
-    public Node visitBooleanValue(SqlFlowStatementParser.BooleanValueContext context) {
+    public Node visitBooleanValue(SqlFlowParser.BooleanValueContext context) {
         return new BooleanLiteral(getLocation(context), context.getText());
     }
 
     @Override
-    public Node visitInterval(SqlFlowStatementParser.IntervalContext context) {
+    public Node visitInterval(SqlFlowParser.IntervalContext context) {
         return new IntervalLiteral(
                 getLocation(context),
                 ((StringLiteral) visit(context.string())).getValue(),
@@ -1548,7 +1545,7 @@ public class AstBuilder extends SqlFlowStatementBaseVisitor<Node> {
     }
 
     @Override
-    public Node visitParameter(SqlFlowStatementParser.ParameterContext context) {
+    public Node visitParameter(SqlFlowParser.ParameterContext context) {
         Parameter parameter = new Parameter(getLocation(context), parameterPosition);
         parameterPosition++;
         return parameter;
@@ -1557,22 +1554,22 @@ public class AstBuilder extends SqlFlowStatementBaseVisitor<Node> {
     // ***************** arguments *****************
 
     @Override
-    public Node visitQualifiedArgument(SqlFlowStatementParser.QualifiedArgumentContext context) {
+    public Node visitQualifiedArgument(SqlFlowParser.QualifiedArgumentContext context) {
         return new PathElement(getLocation(context), (Identifier) visit(context.identifier(0)), (Identifier) visit(context.identifier(1)));
     }
 
     @Override
-    public Node visitUnqualifiedArgument(SqlFlowStatementParser.UnqualifiedArgumentContext context) {
+    public Node visitUnqualifiedArgument(SqlFlowParser.UnqualifiedArgumentContext context) {
         return new PathElement(getLocation(context), (Identifier) visit(context.identifier()));
     }
 
     @Override
-    public Node visitPathSpecification(SqlFlowStatementParser.PathSpecificationContext context) {
+    public Node visitPathSpecification(SqlFlowParser.PathSpecificationContext context) {
         return new PathSpecification(getLocation(context), visit(context.pathElement(), PathElement.class));
     }
 
     @Override
-    public Node visitRowType(SqlFlowStatementParser.RowTypeContext context) {
+    public Node visitRowType(SqlFlowParser.RowTypeContext context) {
         List<RowDataType.Field> fields = context.rowField().stream()
                 .map(this::visit)
                 .map(RowDataType.Field.class::cast)
@@ -1582,7 +1579,7 @@ public class AstBuilder extends SqlFlowStatementBaseVisitor<Node> {
     }
 
     @Override
-    public Node visitRowField(SqlFlowStatementParser.RowFieldContext context) {
+    public Node visitRowField(SqlFlowParser.RowFieldContext context) {
         return new RowDataType.Field(
                 getLocation(context),
                 visitIfPresent(context.identifier(), Identifier.class),
@@ -1590,7 +1587,7 @@ public class AstBuilder extends SqlFlowStatementBaseVisitor<Node> {
     }
 
     @Override
-    public Node visitGenericType(SqlFlowStatementParser.GenericTypeContext context) {
+    public Node visitGenericType(SqlFlowParser.GenericTypeContext context) {
         List<DataTypeParameter> parameters = context.typeParameter().stream()
                 .map(this::visit)
                 .map(DataTypeParameter.class::cast)
@@ -1600,7 +1597,7 @@ public class AstBuilder extends SqlFlowStatementBaseVisitor<Node> {
     }
 
     @Override
-    public Node visitTypeParameter(SqlFlowStatementParser.TypeParameterContext context) {
+    public Node visitTypeParameter(SqlFlowParser.TypeParameterContext context) {
         if (context.INTEGER_VALUE() != null) {
             return new NumericParameter(getLocation(context), context.getText());
         }
@@ -1609,7 +1606,7 @@ public class AstBuilder extends SqlFlowStatementBaseVisitor<Node> {
     }
 
     @Override
-    public Node visitIntervalType(SqlFlowStatementParser.IntervalTypeContext context) {
+    public Node visitIntervalType(SqlFlowParser.IntervalTypeContext context) {
         String from = context.from.getText();
         String to = getTextIfPresent(context.to)
                 .orElse(from);
@@ -1621,7 +1618,7 @@ public class AstBuilder extends SqlFlowStatementBaseVisitor<Node> {
     }
 
     @Override
-    public Node visitDateTimeType(SqlFlowStatementParser.DateTimeTypeContext context) {
+    public Node visitDateTimeType(SqlFlowParser.DateTimeTypeContext context) {
         DateTimeDataType.Type type;
 
         if (context.base.getType() == TIME) {
@@ -1640,7 +1637,7 @@ public class AstBuilder extends SqlFlowStatementBaseVisitor<Node> {
     }
 
     @Override
-    public Node visitDoublePrecisionType(SqlFlowStatementParser.DoublePrecisionTypeContext context) {
+    public Node visitDoublePrecisionType(SqlFlowParser.DoublePrecisionTypeContext context) {
         return new GenericDataType(
                 getLocation(context),
                 new Identifier(getLocation(context.DOUBLE()), context.DOUBLE().getText(), false),
@@ -1648,7 +1645,7 @@ public class AstBuilder extends SqlFlowStatementBaseVisitor<Node> {
     }
 
     @Override
-    public Node visitLegacyArrayType(SqlFlowStatementParser.LegacyArrayTypeContext context) {
+    public Node visitLegacyArrayType(SqlFlowParser.LegacyArrayTypeContext context) {
         return new GenericDataType(
                 getLocation(context),
                 new Identifier(getLocation(context.ARRAY()), context.ARRAY().getText(), false),
@@ -1656,7 +1653,7 @@ public class AstBuilder extends SqlFlowStatementBaseVisitor<Node> {
     }
 
     @Override
-    public Node visitLegacyMapType(SqlFlowStatementParser.LegacyMapTypeContext context) {
+    public Node visitLegacyMapType(SqlFlowParser.LegacyMapTypeContext context) {
         return new GenericDataType(
                 getLocation(context),
                 new Identifier(getLocation(context.MAP()), context.MAP().getText(), false),
@@ -1666,7 +1663,7 @@ public class AstBuilder extends SqlFlowStatementBaseVisitor<Node> {
     }
 
     @Override
-    public Node visitArrayType(SqlFlowStatementParser.ArrayTypeContext context) {
+    public Node visitArrayType(SqlFlowParser.ArrayTypeContext context) {
         if (context.INTEGER_VALUE() != null) {
             throw new UnsupportedOperationException("Explicit array size not supported");
         }
@@ -1678,7 +1675,7 @@ public class AstBuilder extends SqlFlowStatementBaseVisitor<Node> {
     }
 
     @Override
-    public Node visitQueryPeriod(SqlFlowStatementParser.QueryPeriodContext context) {
+    public Node visitQueryPeriod(SqlFlowParser.QueryPeriodContext context) {
         QueryPeriod.RangeType type = getRangeType((Token) context.rangeType().getChild(0).getPayload());
         Expression marker = (Expression) visit(context.valueExpression());
         return new QueryPeriod(getLocation(context), type, marker);
@@ -1686,23 +1683,7 @@ public class AstBuilder extends SqlFlowStatementBaseVisitor<Node> {
 
     // ***************** helpers *****************
 
-    @Override
-    protected Node defaultResult() {
-        return null;
-    }
 
-    @Override
-    protected Node aggregateResult(Node aggregate, Node nextResult) {
-        if (nextResult == null) {
-            throw new UnsupportedOperationException("not yet implemented");
-        }
-
-        if (aggregate == null) {
-            return nextResult;
-        }
-
-        throw new UnsupportedOperationException("not yet implemented");
-    }
 
     private enum UnicodeDecodeState {
         EMPTY,
@@ -1710,7 +1691,7 @@ public class AstBuilder extends SqlFlowStatementBaseVisitor<Node> {
         UNICODE_SEQUENCE
     }
 
-    private static String decodeUnicodeLiteral(SqlFlowStatementParser.UnicodeStringLiteralContext context) {
+    private static String decodeUnicodeLiteral(SqlFlowParser.UnicodeStringLiteralContext context) {
         char escape;
         if (context.UESCAPE() != null) {
             String escapeString = unquote(context.STRING().getText());
@@ -1802,19 +1783,19 @@ public class AstBuilder extends SqlFlowStatementBaseVisitor<Node> {
 
     private static LikeClause.PropertiesOption getPropertiesOption(Token token) {
         switch (token.getType()) {
-            case SqlFlowStatementLexer.INCLUDING:
+            case SqlFlowLexer.INCLUDING:
                 return LikeClause.PropertiesOption.INCLUDING;
-            case SqlFlowStatementLexer.EXCLUDING:
+            case SqlFlowLexer.EXCLUDING:
                 return LikeClause.PropertiesOption.EXCLUDING;
         }
         throw new IllegalArgumentException("Unsupported LIKE option type: " + token.getText());
     }
 
-    private QualifiedName getQualifiedName(SqlFlowStatementParser.QualifiedNameContext context) {
+    private QualifiedName getQualifiedName(SqlFlowParser.QualifiedNameContext context) {
         return QualifiedName.of(visit(context.identifier(), Identifier.class));
     }
 
-    private static boolean isDistinct(SqlFlowStatementParser.SetQuantifierContext setQuantifier) {
+    private static boolean isDistinct(SqlFlowParser.SetQuantifierContext setQuantifier) {
         return setQuantifier != null && setQuantifier.DISTINCT() != null;
     }
 
@@ -1839,15 +1820,15 @@ public class AstBuilder extends SqlFlowStatementBaseVisitor<Node> {
 
     private static ArithmeticBinaryExpression.Operator getArithmeticBinaryOperator(Token operator) {
         switch (operator.getType()) {
-            case SqlFlowStatementLexer.PLUS:
+            case SqlFlowLexer.PLUS:
                 return ArithmeticBinaryExpression.Operator.ADD;
-            case SqlFlowStatementLexer.MINUS:
+            case SqlFlowLexer.MINUS:
                 return ArithmeticBinaryExpression.Operator.SUBTRACT;
-            case SqlFlowStatementLexer.ASTERISK:
+            case SqlFlowLexer.ASTERISK:
                 return ArithmeticBinaryExpression.Operator.MULTIPLY;
-            case SqlFlowStatementLexer.SLASH:
+            case SqlFlowLexer.SLASH:
                 return ArithmeticBinaryExpression.Operator.DIVIDE;
-            case SqlFlowStatementLexer.PERCENT:
+            case SqlFlowLexer.PERCENT:
                 return ArithmeticBinaryExpression.Operator.MODULUS;
         }
 
@@ -1856,17 +1837,17 @@ public class AstBuilder extends SqlFlowStatementBaseVisitor<Node> {
 
     private static ComparisonExpression.Operator getComparisonOperator(Token symbol) {
         switch (symbol.getType()) {
-            case SqlFlowStatementLexer.EQ:
+            case SqlFlowLexer.EQ:
                 return ComparisonExpression.Operator.EQUAL;
-            case SqlFlowStatementLexer.NEQ:
+            case SqlFlowLexer.NEQ:
                 return ComparisonExpression.Operator.NOT_EQUAL;
-            case SqlFlowStatementLexer.LT:
+            case SqlFlowLexer.LT:
                 return ComparisonExpression.Operator.LESS_THAN;
-            case SqlFlowStatementLexer.LTE:
+            case SqlFlowLexer.LTE:
                 return ComparisonExpression.Operator.LESS_THAN_OR_EQUAL;
-            case SqlFlowStatementLexer.GT:
+            case SqlFlowLexer.GT:
                 return ComparisonExpression.Operator.GREATER_THAN;
-            case SqlFlowStatementLexer.GTE:
+            case SqlFlowLexer.GTE:
                 return ComparisonExpression.Operator.GREATER_THAN_OR_EQUAL;
         }
 
@@ -1875,15 +1856,15 @@ public class AstBuilder extends SqlFlowStatementBaseVisitor<Node> {
 
     private static CurrentTime.Function getDateTimeFunctionType(Token token) {
         switch (token.getType()) {
-            case SqlFlowStatementLexer.CURRENT_DATE:
+            case SqlFlowLexer.CURRENT_DATE:
                 return CurrentTime.Function.DATE;
-            case SqlFlowStatementLexer.CURRENT_TIME:
+            case SqlFlowLexer.CURRENT_TIME:
                 return CurrentTime.Function.TIME;
-            case SqlFlowStatementLexer.CURRENT_TIMESTAMP:
+            case SqlFlowLexer.CURRENT_TIMESTAMP:
                 return CurrentTime.Function.TIMESTAMP;
-            case SqlFlowStatementLexer.LOCALTIME:
+            case SqlFlowLexer.LOCALTIME:
                 return CurrentTime.Function.LOCALTIME;
-            case SqlFlowStatementLexer.LOCALTIMESTAMP:
+            case SqlFlowLexer.LOCALTIMESTAMP:
                 return CurrentTime.Function.LOCALTIMESTAMP;
         }
 
@@ -1892,17 +1873,17 @@ public class AstBuilder extends SqlFlowStatementBaseVisitor<Node> {
 
     private static IntervalLiteral.IntervalField getIntervalFieldType(Token token) {
         switch (token.getType()) {
-            case SqlFlowStatementLexer.YEAR:
+            case SqlFlowLexer.YEAR:
                 return IntervalLiteral.IntervalField.YEAR;
-            case SqlFlowStatementLexer.MONTH:
+            case SqlFlowLexer.MONTH:
                 return IntervalLiteral.IntervalField.MONTH;
-            case SqlFlowStatementLexer.DAY:
+            case SqlFlowLexer.DAY:
                 return IntervalLiteral.IntervalField.DAY;
-            case SqlFlowStatementLexer.HOUR:
+            case SqlFlowLexer.HOUR:
                 return IntervalLiteral.IntervalField.HOUR;
-            case SqlFlowStatementLexer.MINUTE:
+            case SqlFlowLexer.MINUTE:
                 return IntervalLiteral.IntervalField.MINUTE;
-            case SqlFlowStatementLexer.SECOND:
+            case SqlFlowLexer.SECOND:
                 return IntervalLiteral.IntervalField.SECOND;
         }
 
@@ -1911,9 +1892,9 @@ public class AstBuilder extends SqlFlowStatementBaseVisitor<Node> {
 
     private static IntervalLiteral.Sign getIntervalSign(Token token) {
         switch (token.getType()) {
-            case SqlFlowStatementLexer.MINUS:
+            case SqlFlowLexer.MINUS:
                 return IntervalLiteral.Sign.NEGATIVE;
-            case SqlFlowStatementLexer.PLUS:
+            case SqlFlowLexer.PLUS:
                 return IntervalLiteral.Sign.POSITIVE;
         }
 
@@ -1922,11 +1903,11 @@ public class AstBuilder extends SqlFlowStatementBaseVisitor<Node> {
 
     private static WindowFrame.Type getFrameType(Token type) {
         switch (type.getType()) {
-            case SqlFlowStatementLexer.RANGE:
+            case SqlFlowLexer.RANGE:
                 return WindowFrame.Type.RANGE;
-            case SqlFlowStatementLexer.ROWS:
+            case SqlFlowLexer.ROWS:
                 return WindowFrame.Type.ROWS;
-            case SqlFlowStatementLexer.GROUPS:
+            case SqlFlowLexer.GROUPS:
                 return WindowFrame.Type.GROUPS;
         }
 
@@ -1935,9 +1916,9 @@ public class AstBuilder extends SqlFlowStatementBaseVisitor<Node> {
 
     private static FrameBound.Type getBoundedFrameBoundType(Token token) {
         switch (token.getType()) {
-            case SqlFlowStatementLexer.PRECEDING:
+            case SqlFlowLexer.PRECEDING:
                 return FrameBound.Type.PRECEDING;
-            case SqlFlowStatementLexer.FOLLOWING:
+            case SqlFlowLexer.FOLLOWING:
                 return FrameBound.Type.FOLLOWING;
         }
 
@@ -1946,9 +1927,9 @@ public class AstBuilder extends SqlFlowStatementBaseVisitor<Node> {
 
     private static FrameBound.Type getUnboundedFrameBoundType(Token token) {
         switch (token.getType()) {
-            case SqlFlowStatementLexer.PRECEDING:
+            case SqlFlowLexer.PRECEDING:
                 return FrameBound.Type.UNBOUNDED_PRECEDING;
-            case SqlFlowStatementLexer.FOLLOWING:
+            case SqlFlowLexer.FOLLOWING:
                 return FrameBound.Type.UNBOUNDED_FOLLOWING;
         }
 
@@ -1957,9 +1938,9 @@ public class AstBuilder extends SqlFlowStatementBaseVisitor<Node> {
 
     private static SampledRelation.Type getSamplingMethod(Token token) {
         switch (token.getType()) {
-            case SqlFlowStatementLexer.BERNOULLI:
+            case SqlFlowLexer.BERNOULLI:
                 return SampledRelation.Type.BERNOULLI;
-            case SqlFlowStatementLexer.SYSTEM:
+            case SqlFlowLexer.SYSTEM:
                 return SampledRelation.Type.SYSTEM;
         }
 
@@ -1968,9 +1949,9 @@ public class AstBuilder extends SqlFlowStatementBaseVisitor<Node> {
 
     private static SortItem.NullOrdering getNullOrderingType(Token token) {
         switch (token.getType()) {
-            case SqlFlowStatementLexer.FIRST:
+            case SqlFlowLexer.FIRST:
                 return SortItem.NullOrdering.FIRST;
-            case SqlFlowStatementLexer.LAST:
+            case SqlFlowLexer.LAST:
                 return SortItem.NullOrdering.LAST;
         }
 
@@ -1979,9 +1960,9 @@ public class AstBuilder extends SqlFlowStatementBaseVisitor<Node> {
 
     private static SortItem.Ordering getOrderingType(Token token) {
         switch (token.getType()) {
-            case SqlFlowStatementLexer.ASC:
+            case SqlFlowLexer.ASC:
                 return SortItem.Ordering.ASCENDING;
-            case SqlFlowStatementLexer.DESC:
+            case SqlFlowLexer.DESC:
                 return SortItem.Ordering.DESCENDING;
         }
 
@@ -1990,18 +1971,18 @@ public class AstBuilder extends SqlFlowStatementBaseVisitor<Node> {
 
     private static QuantifiedComparisonExpression.Quantifier getComparisonQuantifier(Token symbol) {
         switch (symbol.getType()) {
-            case SqlFlowStatementLexer.ALL:
+            case SqlFlowLexer.ALL:
                 return QuantifiedComparisonExpression.Quantifier.ALL;
-            case SqlFlowStatementLexer.ANY:
+            case SqlFlowLexer.ANY:
                 return QuantifiedComparisonExpression.Quantifier.ANY;
-            case SqlFlowStatementLexer.SOME:
+            case SqlFlowLexer.SOME:
                 return QuantifiedComparisonExpression.Quantifier.SOME;
         }
 
         throw new IllegalArgumentException("Unsupported quantifier: " + symbol.getText());
     }
 
-    private List<Identifier> getIdentifiers(List<SqlFlowStatementParser.IdentifierContext> identifiers) {
+    private List<Identifier> getIdentifiers(List<SqlFlowParser.IdentifierContext> identifiers) {
         return identifiers.stream().map(context -> (Identifier) visit(context)).collect(toList());
     }
 

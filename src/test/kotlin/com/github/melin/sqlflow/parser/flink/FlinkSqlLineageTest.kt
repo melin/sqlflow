@@ -3,7 +3,7 @@ package com.github.melin.sqlflow.parser.flink
 import com.github.melin.sqlflow.analyzer.Analysis
 import com.github.melin.sqlflow.analyzer.StatementAnalyzer
 import com.github.melin.sqlflow.parser.SqlParser
-import com.github.melin.sqlflow.util.MapperUtils
+import com.github.melin.sqlflow.util.JsonUtils
 import org.junit.Test
 import java.util.*
 
@@ -64,6 +64,6 @@ class FlinkSqlLineageTest {
             SimpleFlinkMetadataService(), SQL_PARSER)
         statementAnalyzer.analyze(statement, Optional.empty())
 
-        System.out.println(MapperUtils.toJSONString(analysis.getTarget().get()));
+        System.out.println(JsonUtils.toJSONString(analysis.getTarget().get()));
     }
 }
