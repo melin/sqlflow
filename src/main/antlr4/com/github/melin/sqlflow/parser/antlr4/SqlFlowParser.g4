@@ -53,25 +53,47 @@ standaloneRowPattern
     ;
 
 statement
-    : query                                                            #statementDefault
+    : query                                                                 #statementDefault
     | CREATE TABLE (IF NOT EXISTS)? qualifiedName columnAliases?
         (COMMENT string)?
         (WITH properties)? AS (query | LEFT_PAREN query RIGHT_PAREN)
-        (WITH (NO)? DATA)?                                             #createTableAsSelect
-    | INSERT INTO qualifiedName columnAliases? query                   #insertInto
-    | DELETE FROM qualifiedName (WHERE booleanExpression)?             #delete
+        (WITH (NO)? DATA)?                                                  #createTableAsSelect
+    | INSERT INTO qualifiedName partitionSpec? (IF NOT EXISTS)?
+        columnAliases? query                                                #insertInto
+    | INSERT OVERWRITE qualifiedName (partitionSpec (IF NOT EXISTS)?)?
+        columnAliases? query                                                #insertOverWrite
+    | DELETE FROM qualifiedName (WHERE booleanExpression)?                  #delete
     | CREATE (OR REPLACE)? MATERIALIZED VIEW
         (IF NOT EXISTS)? qualifiedName
         (COMMENT string)?
-        (WITH properties)? AS query                                    #createMaterializedView
-    | CREATE (OR REPLACE)? VIEW qualifiedName
+        (WITH properties)? AS query                                         #createMaterializedView
+    | CREATE (OR REPLACE)? (GLOBAL? TEMPORARY)?
+        VIEW (IF NOT EXISTS)? qualifiedName
+        identifierCommentList?
         (COMMENT string)?
-        (SECURITY (DEFINER | INVOKER))? AS query                       #createView
+        (SECURITY (DEFINER | INVOKER))? AS query                            #createView
     | UPDATE qualifiedName
         SET updateAssignment (COMMA updateAssignment)*
-        (WHERE where=booleanExpression)?                               #update
+        (WHERE where=booleanExpression)?                                    #update
     | MERGE INTO qualifiedName (AS? identifier)?
-        USING relation ON expression mergeCase+                        #merge
+        USING relation ON expression mergeCase+                             #merge
+    ;
+
+partitionSpec
+    : PARTITION LEFT_PAREN partitionVal (COMMA partitionVal)* RIGHT_PAREN
+    ;
+
+partitionVal
+    : identifier (EQ primaryExpression)?
+    | identifier EQ DEFAULT
+    ;
+
+identifierCommentList
+    : LEFT_PAREN identifierComment (COMMA identifierComment)* RIGHT_PAREN
+    ;
+
+identifierComment
+    : identifier (COMMENT string)?
     ;
 
 query
@@ -120,10 +142,10 @@ queryTerm
     ;
 
 queryPrimary
-    : querySpecification                   #queryPrimaryDefault
-    | TABLE qualifiedName                  #table
-    | VALUES expression (COMMA expression)*  #inlineTable
-    | LEFT_PAREN queryNoWith RIGHT_PAREN                  #subquery
+    : querySpecification                                #queryPrimaryDefault
+    | TABLE qualifiedName                               #table
+    | VALUES expression (COMMA expression)*             #inlineTable
+    | LEFT_PAREN queryNoWith RIGHT_PAREN                #subquery
     ;
 
 sortItem
@@ -232,7 +254,7 @@ patternRecognition
           rowsPerMatch?
           (AFTER MATCH skipTo)?
           (INITIAL | SEEK)?
-          PATTERN LEFT_PAREN rowPattern RIGHT_PAREN
+          PATTERN LEFT_PAREN rowPattern RIGHT_PAREN withinClause?
           (SUBSET subsetDefinition (COMMA subsetDefinition)*)?
           DEFINE variableDefinition (COMMA variableDefinition)*
         RIGHT_PAREN
@@ -284,13 +306,46 @@ relationPrimary
     | LEFT_PAREN query RIGHT_PAREN                                                     #subqueryRelation
     | UNNEST LEFT_PAREN expression (COMMA expression)* RIGHT_PAREN (WITH ORDINALITY)?  #unnest
     | LATERAL LEFT_PAREN query RIGHT_PAREN                                             #lateral
-    | LATERAL? TABLE LEFT_PAREN tableFunctionCall RIGHT_PAREN                                   #tableFunctionInvocation
+    | LATERAL? TABLE LEFT_PAREN tableFunctionCall RIGHT_PAREN                          #tableFunctionInvocation
+    | TABLE LEFT_PAREN windowTVFExression RIGHT_PAREN                                  #windoTVFClause
     | LEFT_PAREN relation RIGHT_PAREN                                                  #parenthesizedRelation
     ;
 
 tableFunctionCall
     : qualifiedName LEFT_PAREN (tableFunctionArgument (COMMA tableFunctionArgument)*)?
       (COPARTITION copartitionTables (COMMA copartitionTables)*)? RIGHT_PAREN
+    ;
+
+windowTVFExression
+    : windoTVFName LEFT_PAREN windowTVFParam (COMMA windowTVFParam)* RIGHT_PAREN
+    ;
+
+windoTVFName
+    : TUMBLE
+    | HOP
+    | CUMULATE
+    ;
+
+windowTVFParam
+    : TABLE qualifiedName
+    | columnDescriptor
+    | interval
+    | DATA DOUBLE_ARROW TABLE qualifiedName
+    | TIMECOL DOUBLE_ARROW columnDescriptor
+    | timeIntervalParamName DOUBLE_ARROW interval
+    ;
+
+timeIntervalParamName
+    : DATA
+    | TIMECOL
+    | SIZE
+    | OFFSET
+    | STEP
+    | SLIDE
+    ;
+
+columnDescriptor
+    : DESCRIPTOR LEFT_PAREN identifier RIGHT_PAREN
     ;
 
 tableFunctionArgument
@@ -335,14 +390,15 @@ booleanExpression
 
 // workaround for https://github.com/antlr/antlr4/issues/780
 predicate[ParserRuleContext value]
-    : comparisonOperator right=valueExpression                            #comparison
-    | comparisonOperator comparisonQuantifier LEFT_PAREN query RIGHT_PAREN               #quantifiedComparison
-    | NOT? BETWEEN lower=valueExpression AND upper=valueExpression        #between
-    | NOT? IN LEFT_PAREN expression (COMMA expression)* RIGHT_PAREN                        #inList
-    | NOT? IN LEFT_PAREN query RIGHT_PAREN                                               #inSubquery
-    | NOT? LIKE pattern=valueExpression (ESCAPE escape=valueExpression)?  #like
-    | IS NOT? NULL                                                        #nullPredicate
-    | IS NOT? DISTINCT FROM right=valueExpression                         #distinctFrom
+    : comparisonOperator right=valueExpression                                                      #comparison
+    | comparisonOperator comparisonQuantifier LEFT_PAREN query RIGHT_PAREN                          #quantifiedComparison
+    | NOT? BETWEEN (ASYMMETRIC | SYMMETRIC)? lower=valueExpression AND upper=valueExpression        #between
+    | NOT? IN LEFT_PAREN expression (COMMA expression)* RIGHT_PAREN                                 #inList
+    | NOT? IN LEFT_PAREN query RIGHT_PAREN                                                          #inSubquery
+    | NOT? LIKE pattern=valueExpression (ESCAPE escape=valueExpression)?                            #like
+    | NOT? SIMILAR TO right=valueExpression (ESCAPE escape=valueExpression)?                        #similar
+    | IS NOT? NULL                                                                                  #nullPredicate
+    | IS NOT? DISTINCT FROM right=valueExpression                                                   #distinctFrom
     ;
 
 valueExpression
@@ -441,7 +497,7 @@ interval
     ;
 
 intervalField
-    : YEAR | MONTH | DAY | HOUR | MINUTE | SECOND
+    : YEAR | YEARS | QUARTER | MONTH | MONTHS | WEEK | WEEKS | DAY | DAYS | HOUR | HOURS | MINUTE | MINUTES | SECOND | SECONDS | MILLISECOND | MICROSECOND | NANOSECOND | EPOCH
     ;
 
 normalForm
@@ -449,17 +505,17 @@ normalForm
     ;
 
 type
-    : ROW LEFT_PAREN rowField (COMMA rowField)* RIGHT_PAREN                                         #rowType
-    | INTERVAL from=intervalField (TO to=intervalField)?                           #intervalType
+    : ROW LEFT_PAREN rowField (COMMA rowField)* RIGHT_PAREN                                       #rowType
+    | INTERVAL from=intervalField (TO to=intervalField)?                                          #intervalType
     | base=TIMESTAMP (LEFT_PAREN precision = typeParameter RIGHT_PAREN)? (WITHOUT TIME ZONE)?     #dateTimeType
     | base=TIMESTAMP (LEFT_PAREN precision = typeParameter RIGHT_PAREN)? WITH TIME ZONE           #dateTimeType
     | base=TIME (LEFT_PAREN precision = typeParameter RIGHT_PAREN)? (WITHOUT TIME ZONE)?          #dateTimeType
     | base=TIME (LEFT_PAREN precision = typeParameter RIGHT_PAREN)? WITH TIME ZONE                #dateTimeType
-    | DOUBLE PRECISION                                                             #doublePrecisionType
-    | ARRAY LT type GT                                                          #legacyArrayType
-    | MAP LT keyType=type COMMA valueType=type GT                                  #legacyMapType
-    | type ARRAY (LEFT_BRACKET INTEGER_VALUE RIGHT_BRACKET)?                                          #arrayType
-    | identifier (LEFT_PAREN typeParameter (COMMA typeParameter)* RIGHT_PAREN)?                     #genericType
+    | DOUBLE PRECISION                                                                            #doublePrecisionType
+    | ARRAY LT type GT                                                                            #legacyArrayType
+    | MAP LT keyType=type COMMA valueType=type GT                                                 #legacyMapType
+    | type ARRAY (LEFT_BRACKET INTEGER_VALUE RIGHT_BRACKET)?                                      #arrayType
+    | identifier (LEFT_PAREN typeParameter (COMMA typeParameter)* RIGHT_PAREN)?                   #genericType
     ;
 
 rowField
@@ -481,11 +537,11 @@ filter
 mergeCase
     : WHEN MATCHED (AND condition=expression)? THEN
         UPDATE SET targets+=identifier EQ values+=expression
-          (COMMA targets+=identifier EQ values+=expression)*                  #mergeUpdate
-    | WHEN MATCHED (AND condition=expression)? THEN DELETE                  #mergeDelete
+          (COMMA targets+=identifier EQ values+=expression)*                                    #mergeUpdate
+    | WHEN MATCHED (AND condition=expression)? THEN DELETE                                      #mergeDelete
     | WHEN NOT MATCHED (AND condition=expression)? THEN
         INSERT (LEFT_PAREN targets+=identifier (COMMA targets+=identifier)* RIGHT_PAREN)?
-        VALUES LEFT_PAREN values+=expression (COMMA values+=expression)* RIGHT_PAREN         #mergeInsert
+        VALUES LEFT_PAREN values+=expression (COMMA values+=expression)* RIGHT_PAREN            #mergeInsert
     ;
 
 over
@@ -521,7 +577,11 @@ frameBound
 rowPattern
     : patternPrimary patternQuantifier?                 #quantifiedPrimary
     | rowPattern rowPattern                             #patternConcatenation
-    | rowPattern PIPE rowPattern                         #patternAlternation
+    | rowPattern PIPE rowPattern                        #patternAlternation
+    ;
+
+withinClause
+    : WITHIN interval
     ;
 
 patternPrimary
@@ -584,30 +644,32 @@ number
     ;
 
 nonReserved
+ //: YEAR | YEARS | QUARTER | MONTH | MONTHS | WEEK | WEEKS | DAY | DAYS | HOUR | HOURS | MINUTE | MINUTES | SECOND | SECONDS | MILLISECOND | MICROSECOND | NANOSECOND | EPOCH
     // IMPORTANT: this rule must only contain tokens. Nested rules are not supported. See SqlParser.exitNonReserved
-    : AFTER | ALL | ANY | ARRAY | ASC | AT
+    : AFTER | ALL | ANY | ARRAY | ASC | AT | ASYMMETRIC
     | BERNOULLI
-    | COLUMN | COLUMNS | COMMENT | COMMIT | COUNT | CURRENT | COPARTITION
-    | DATA | DATE | DAY | DEFINE | DEFINER | DESC | DESCRIPTOR | DISTRIBUTED | DOUBLE
-    | EMPTY | ERROR | EXCLUDING
+    | COLUMN | COLUMNS | COMMENT | COMMIT | COUNT | CURRENT | COPARTITION | CUMULATE
+    | DATA | DATE | DAY | DAYS | DEFINE | DEFINER | DESC | DESCRIPTOR | DISTRIBUTED | DOUBLE | DEFAULT
+    | EMPTY | ERROR | EXCLUDING | EPOCH
     | FETCH | FILTER | FINAL | FIRST | FOLLOWING | FORMAT | FUNCTIONS
-    | GROUPS
-    | HOUR
+    | GROUPS | GLOBAL
+    | HOUR | HOURS | HOP
     | IF | IGNORE | INCLUDING | INITIAL | INPUT | INTERVAL | INVOKER | IO | ISOLATION
     | JSON
     | KEEP
     | LAST | LATERAL | LEVEL | LIMIT | LOCAL | LOGICAL
-    | MAP | MATCH | MATCHED | MATCHES | MATCH_RECOGNIZE | MATERIALIZED | MEASURES | MERGE | MINUTE | MONTH
-    | NEXT | NFC | NFD | NFKC | NFKD | NO | NONE | NULLIF | NULLS
-    | OF | OFFSET | OMIT | ONE | ONLY | OPTION | ORDINALITY | OUTPUT | OVER | OVERFLOW
+    | MAP | MATCH | MATCHED | MATCHES | MATCH_RECOGNIZE | MATERIALIZED | MEASURES | MERGE | MINUTE | MINUTES | MONTH | MONTHS | MILLISECOND | MICROSECOND
+    | NEXT | NFC | NFD | NFKC | NFKD | NO | NONE | NULLIF | NULLS | NANOSECOND
+    | OF | OFFSET | OMIT | ONE | ONLY | OPTION | ORDINALITY | OUTPUT | OVER | OVERFLOW | OVERWRITE
     | PARTITION | PARTITIONS | PAST | PATH | PATTERN | PER | PERMUTE | POSITION | PRECEDING | PRECISION | PROPERTIES | PRUNE
+    | QUARTER
     | RANGE | READ | REFRESH | RENAME | REPEATABLE | REPLACE | RESET | RESPECT | RESTRICT | ROW | ROWS | RUNNING
-    | SECOND | SECURITY | SEEK | SET | SETS | SKIP_
-    | SHOW | SOME | START | STATS | SUBSET | SUBSTRING | SYSTEM
-    | TABLES | TABLESAMPLE | TEXT | TIES | TIME | TIMESTAMP | SYSTEM_TIME | TO | TRUNCATE | TRY_CAST | TYPE
+    | SECOND | SECONDS | SECURITY | SEEK | SET | SETS | SKIP_ | SIZE | STEP | SLIDE | SESSION
+    | SHOW | SOME | START | STATS | SUBSET | SUBSTRING | SYSTEM | SYMMETRIC | SIMILAR
+    | TABLES | TABLESAMPLE | TEXT | TIES | TIME | TIMECOL | TIMESTAMP | SYSTEM_TIME | TO | TRUNCATE | TRY_CAST | TYPE | TUMBLE | TEMPORARY
     | UNBOUNDED | UNMATCHED | UPDATE | USE | USER
     | VERSION | VIEW
-    | WINDOW | WITHIN | WITHOUT
-    | YEAR
+    | WINDOW | WITHIN | WITHOUT | WEEK | WEEKS
+    | YEAR | YEARS
     | ZONE
     ;
