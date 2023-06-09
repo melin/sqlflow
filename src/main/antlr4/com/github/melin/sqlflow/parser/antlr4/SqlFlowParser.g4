@@ -280,11 +280,46 @@ columnAliases
     ;
 
 relationPrimary
-    : qualifiedName queryPeriod?                                      #tableName
-    | LEFT_PAREN query RIGHT_PAREN                                                   #subqueryRelation
+    : qualifiedName queryPeriod?                                                       #tableName
+    | LEFT_PAREN query RIGHT_PAREN                                                     #subqueryRelation
     | UNNEST LEFT_PAREN expression (COMMA expression)* RIGHT_PAREN (WITH ORDINALITY)?  #unnest
-    | LATERAL LEFT_PAREN query RIGHT_PAREN                                           #lateral
-    | LEFT_PAREN relation RIGHT_PAREN                                                #parenthesizedRelation
+    | LATERAL LEFT_PAREN query RIGHT_PAREN                                             #lateral
+    | LATERAL? TABLE LEFT_PAREN tableFunctionCall RIGHT_PAREN                                   #tableFunctionInvocation
+    | LEFT_PAREN relation RIGHT_PAREN                                                  #parenthesizedRelation
+    ;
+
+tableFunctionCall
+    : qualifiedName LEFT_PAREN (tableFunctionArgument (COMMA tableFunctionArgument)*)?
+      (COPARTITION copartitionTables (COMMA copartitionTables)*)? RIGHT_PAREN
+    ;
+
+tableFunctionArgument
+    : (identifier DOUBLE_ARROW)? (tableArgument | descriptorArgument | expression) // descriptor before expression to avoid parsing descriptor as a function call
+    ;
+
+tableArgument
+    : tableArgumentRelation
+        (PARTITION BY (LEFT_PAREN (expression (COMMA expression)*)? RIGHT_PAREN | expression))?
+        (PRUNE WHEN EMPTY | KEEP WHEN EMPTY)?
+        (ORDER BY (LEFT_PAREN sortItem (COMMA sortItem)* RIGHT_PAREN | sortItem))?
+    ;
+
+tableArgumentRelation
+    : TABLE LEFT_PAREN qualifiedName RIGHT_PAREN (AS? identifier columnAliases?)?  #tableArgumentTable
+    | TABLE LEFT_PAREN query RIGHT_PAREN (AS? identifier columnAliases?)?          #tableArgumentQuery
+    ;
+
+descriptorArgument
+    : DESCRIPTOR LEFT_PAREN descriptorField (COMMA descriptorField)* RIGHT_PAREN
+    | CAST LEFT_PAREN NULL AS DESCRIPTOR RIGHT_PAREN
+    ;
+
+descriptorField
+    : identifier type?
+    ;
+
+copartitionTables
+    : LEFT_PAREN qualifiedName COMMA qualifiedName (COMMA qualifiedName)* RIGHT_PAREN
     ;
 
 expression
@@ -552,19 +587,20 @@ nonReserved
     // IMPORTANT: this rule must only contain tokens. Nested rules are not supported. See SqlParser.exitNonReserved
     : AFTER | ALL | ANY | ARRAY | ASC | AT
     | BERNOULLI
-    | COLUMN | COLUMNS | COMMENT | COMMIT | COUNT | CURRENT
-    | DATA | DATE | DAY | DEFINE | DEFINER | DESC | DISTRIBUTED | DOUBLE
+    | COLUMN | COLUMNS | COMMENT | COMMIT | COUNT | CURRENT | COPARTITION
+    | DATA | DATE | DAY | DEFINE | DEFINER | DESC | DESCRIPTOR | DISTRIBUTED | DOUBLE
     | EMPTY | ERROR | EXCLUDING
     | FETCH | FILTER | FINAL | FIRST | FOLLOWING | FORMAT | FUNCTIONS
     | GROUPS
     | HOUR
     | IF | IGNORE | INCLUDING | INITIAL | INPUT | INTERVAL | INVOKER | IO | ISOLATION
     | JSON
+    | KEEP
     | LAST | LATERAL | LEVEL | LIMIT | LOCAL | LOGICAL
     | MAP | MATCH | MATCHED | MATCHES | MATCH_RECOGNIZE | MATERIALIZED | MEASURES | MERGE | MINUTE | MONTH
     | NEXT | NFC | NFD | NFKC | NFKD | NO | NONE | NULLIF | NULLS
     | OF | OFFSET | OMIT | ONE | ONLY | OPTION | ORDINALITY | OUTPUT | OVER | OVERFLOW
-    | PARTITION | PARTITIONS | PAST | PATH | PATTERN | PER | PERMUTE | POSITION | PRECEDING | PRECISION | PROPERTIES
+    | PARTITION | PARTITIONS | PAST | PATH | PATTERN | PER | PERMUTE | POSITION | PRECEDING | PRECISION | PROPERTIES | PRUNE
     | RANGE | READ | REFRESH | RENAME | REPEATABLE | REPLACE | RESET | RESPECT | RESTRICT | ROW | ROWS | RUNNING
     | SECOND | SECURITY | SEEK | SET | SETS | SKIP_
     | SHOW | SOME | START | STATS | SUBSET | SUBSTRING | SYSTEM
