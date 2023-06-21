@@ -1,7 +1,5 @@
 lexer grammar SqlFlowLexer;
 
-options { caseInsensitive = true; }
-
 AFTER: 'AFTER';
 ALL: 'ALL';
 ALTER: 'ALTER';

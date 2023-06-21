@@ -229,7 +229,7 @@ public class ExpressionAnalyzer {
                 process(expression, context);
             }
 
-            List<Type> argumentTypes = getCallArgumentTypes(node.getArguments(), context);
+            getCallArgumentTypes(node.getArguments(), context);
 
             /*if (QualifiedName.of("LISTAGG").equals(node.getName())) {
                 // Due to fact that the LISTAGG function is transformed out of pragmatic reasons
@@ -575,8 +575,7 @@ public class ExpressionAnalyzer {
             process(offsetValue, context);
         }
 
-        public List<Type> getCallArgumentTypes(List<Expression> arguments, StackableAstVisitorContext<Context> context) {
-            ImmutableList.Builder<Type> argumentTypesBuilder = ImmutableList.builder();
+        public void getCallArgumentTypes(List<Expression> arguments, StackableAstVisitorContext<Context> context) {
             for (Expression argument : arguments) {
                 if (argument instanceof LambdaExpression || argument instanceof BindExpression) {
                     ExpressionAnalyzer innerExpressionAnalyzer = new ExpressionAnalyzer(
@@ -588,7 +587,7 @@ public class ExpressionAnalyzer {
                             innerExpressionAnalyzer.setExpressionType(lambdaArgument, getExpressionType(lambdaArgument));
                         }
                     }
-                    argumentTypesBuilder.add(innerExpressionAnalyzer.analyze(argument, baseScope, context.getContext()));
+                    innerExpressionAnalyzer.analyze(argument, baseScope, context.getContext());
                 } else {
                     if (DereferenceExpression.isQualifiedAllFieldsReference(argument)) {
                         // to resolve `count(label.*)` correctly, we should skip the argument, like for `count(*)`
@@ -600,12 +599,10 @@ public class ExpressionAnalyzer {
                         }
                         labelDereferences.put(NodeRef.of(allRowsDereference), new LabelPrefixedReference(label));
                     } else {
-                        argumentTypesBuilder.add(process(argument, context));
+                        process(argument, context);
                     }
                 }
             }
-
-            return argumentTypesBuilder.build();
         }
 
         private String label(Identifier identifier) {
@@ -909,9 +906,8 @@ public class ExpressionAnalyzer {
         }
 
         private Type getOperator(StackableAstVisitorContext<Context> context, Expression node, OperatorType operatorType, Expression... arguments) {
-            ImmutableList.Builder<Type> argumentTypes = ImmutableList.builder();
             for (Expression expression : arguments) {
-                argumentTypes.add(process(expression, context));
+                process(expression, context);
             }
 
             return setExpressionType(node, UNKNOWN);
