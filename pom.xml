@@ -17,7 +17,7 @@
         <maven.compiler.source>8</maven.compiler.source>
         <maven.compiler.target>8</maven.compiler.target>
         <junit.version>4.13.2</junit.version>
-        <antlr4.version>4.11.1</antlr4.version>
+        <antlr4.version>4.9.3</antlr4.version>
         <antlr4test.version>1.22</antlr4test.version>
         <jackson.verion>2.15.2</jackson.verion>
         <kotlin.version>1.9.0-Beta</kotlin.version>
@@ -130,7 +130,7 @@
                 </configuration>
             </plugin>
 
-            <plugin>
+            <!--<plugin>
                 <groupId>com.khubla.antlr</groupId>
                 <artifactId>antlr4test-maven-plugin</artifactId>
                 <version>${antlr4test.version}</version>
@@ -150,7 +150,7 @@
                         </goals>
                     </execution>
                 </executions>
-            </plugin>
+            </plugin>-->
 
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
@@ -254,4 +254,11 @@
         </plugins>
     </build>
 
+    <distributionManagement>
+        <repository>
+            <id>maven-snapshots</id>
+            <name>maven-snapshots</name>
+            <url>http://172.18.1.33:8081/repository/maven-snapshots/</url>
+        </repository>
+    </distributionManagement>
 </project>
