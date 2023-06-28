@@ -1,4 +1,4 @@
-package com.github.melin.sqlflow;
+package com.github.melin.sqlflow.metadata;
 
 import com.github.melin.sqlflow.metadata.MetadataService;
 import com.github.melin.sqlflow.metadata.QualifiedObjectName;
