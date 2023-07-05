@@ -34,10 +34,10 @@ public class PrestoSqlLineageTest extends AbstractSqlLineageTest {
         //System.out.println(MapperUtils.toJSONString(analysis.getTarget().get()));
 
         assertLineage(analysis, new OutputColumn("name", ImmutableSet.of(
-                new Analysis.SourceColumn(QualifiedObjectName.valueOf("default.bigdata.test"), "col1"),
-                new Analysis.SourceColumn(QualifiedObjectName.valueOf("default.bigdata.test"), "col2")
+                new Analysis.SourceColumn(QualifiedObjectName.valueOf("default.test"), "col1"),
+                new Analysis.SourceColumn(QualifiedObjectName.valueOf("default.test"), "col2")
         )), new OutputColumn("row_num", ImmutableSet.of(
-                new Analysis.SourceColumn(QualifiedObjectName.valueOf("default.bigdata.test"), "row_num")
+                new Analysis.SourceColumn(QualifiedObjectName.valueOf("default.test"), "row_num")
         )));
     }
 }

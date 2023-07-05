@@ -13,12 +13,12 @@ import java.util.Optional;
 public class SimplePrestoMetadataService implements MetadataService {
     @Override
     public Optional<String> getSchema() {
-        return Optional.of("bigdata");
+        return Optional.of("default");
     }
 
     @Override
     public Optional<String> getCatalog() {
-        return Optional.of("default");
+        return Optional.empty();
     }
 
     @Override
@@ -36,13 +36,13 @@ public class SimplePrestoMetadataService implements MetadataService {
             columns.add("row_num");
             columns.add("ds");
 
-            return Optional.of(new SchemaTable("test", columns));
+            return Optional.of(new SchemaTable("default", "test", columns));
         } else if (table.getObjectName().equals("demo")) {
             List<String> columns = Lists.newArrayList();
             columns.add("name");
             columns.add("row_num");
 
-            return Optional.of(new SchemaTable("demo", columns));
+            return Optional.of(new SchemaTable("default", "demo", columns));
         }
         return Optional.empty();
     }

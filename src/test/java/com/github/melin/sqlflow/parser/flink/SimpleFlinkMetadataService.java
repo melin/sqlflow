@@ -13,12 +13,12 @@ import java.util.Optional;
 public class SimpleFlinkMetadataService implements MetadataService {
     @Override
     public Optional<String> getSchema() {
-        return Optional.of("bigdata");
+        return Optional.of("default");
     }
 
     @Override
     public Optional<String> getCatalog() {
-        return Optional.of("default");
+        return Optional.empty();
     }
 
     @Override

@@ -18,9 +18,11 @@ public class QualifiedObjectName {
         requireNonNull(name, "name is null");
 
         ImmutableList<String> ids = ImmutableList.copyOf(Splitter.on('.').split(name));
-        checkArgument(ids.size() == 3, "Invalid name %s", name);
-
-        return new QualifiedObjectName(ids.get(0), ids.get(1), ids.get(2));
+        if (ids.size() == 3) {
+            return new QualifiedObjectName(ids.get(0), ids.get(1), ids.get(2));
+        } else {
+            return new QualifiedObjectName(null, ids.get(0), ids.get(1));
+        }
     }
 
     private final String catalogName;
