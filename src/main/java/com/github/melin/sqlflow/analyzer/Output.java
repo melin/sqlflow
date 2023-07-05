@@ -39,7 +39,7 @@ public final class Output
             @JsonProperty("table") String table,
             @JsonProperty("columns") Optional<List<OutputColumn>> columns)
     {
-        this.catalogName = requireNonNull(catalogName, "catalogName is null");
+        this.catalogName = catalogName;
         this.schema = requireNonNull(schema, "schema is null");
         this.table = requireNonNull(table, "table is null");
         this.columns = requireNonNull(columns, "columns is null").map(ImmutableList::copyOf);

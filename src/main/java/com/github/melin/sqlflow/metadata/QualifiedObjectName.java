@@ -28,7 +28,7 @@ public class QualifiedObjectName {
     private final String objectName;
 
     public QualifiedObjectName(String catalogName, String schemaName, String objectName) {
-        MetadataUtil.checkObjectName(catalogName, schemaName, objectName);
+        MetadataUtil.checkObjectName(schemaName, objectName);
         this.catalogName = catalogName;
         this.schemaName = schemaName;
         this.objectName = objectName;
@@ -68,6 +68,10 @@ public class QualifiedObjectName {
     @JsonValue
     @Override
     public String toString() {
-        return catalogName + '.' + schemaName + '.' + objectName;
+        if (catalogName != null) {
+            return catalogName + '.' + schemaName + '.' + objectName;
+        } else {
+            return schemaName + '.' + objectName;
+        }
     }
 }

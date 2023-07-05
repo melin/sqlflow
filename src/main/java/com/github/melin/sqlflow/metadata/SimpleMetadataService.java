@@ -1,12 +1,9 @@
 package com.github.melin.sqlflow.metadata;
 
-import com.github.melin.sqlflow.metadata.MetadataService;
-import com.github.melin.sqlflow.metadata.QualifiedObjectName;
-import com.github.melin.sqlflow.metadata.SchemaTable;
-import com.github.melin.sqlflow.metadata.ViewDefinition;
 import com.github.melin.sqlflow.tree.QualifiedName;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
@@ -19,11 +16,21 @@ public class SimpleMetadataService implements MetadataService {
 
     private final Optional<String> defaultSchema;
 
-    private final Optional<String> defaultDatabase;
+    private final Optional<String> defaultCatalog;
 
-    public SimpleMetadataService(Optional<String> defaultSchema, Optional<String> defaultDatabase) {
-        this.defaultSchema = defaultSchema;
-        this.defaultDatabase = defaultDatabase;
+    public SimpleMetadataService(String schema) {
+        this.defaultCatalog = Optional.empty();
+        this.defaultSchema = Optional.of(schema);
+    }
+
+    public SimpleMetadataService(String defaultCatalog, String defaultSchema) {
+        this.defaultCatalog = Optional.of(defaultCatalog);
+        this.defaultSchema = Optional.of(defaultSchema);
+    }
+
+    public MetadataService addTableMetadata(List<SchemaTable> schemaTables) {
+        tables.addAll(schemaTables);
+        return this;
     }
 
     public MetadataService addTableMetadata(SchemaTable schemaTable) {
@@ -38,7 +45,7 @@ public class SimpleMetadataService implements MetadataService {
 
     @Override
     public Optional<String> getCatalog() {
-        return defaultDatabase;
+        return defaultCatalog;
     }
 
     @Override
@@ -49,7 +56,7 @@ public class SimpleMetadataService implements MetadataService {
     @Override
     public Optional<SchemaTable> getTableSchema(QualifiedObjectName table) {
         for (SchemaTable schemaTable : tables) {
-            if (schemaTable.toString().equals(table.toString())) {
+            if (schemaTable.toString().equalsIgnoreCase(table.toString())) {
                 return Optional.of(schemaTable);
             }
         }

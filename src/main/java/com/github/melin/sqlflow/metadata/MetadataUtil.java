@@ -40,8 +40,7 @@ public class MetadataUtil {
         return checkLowerCase(tableName, "tableName");
     }
 
-    public static void checkObjectName(String catalogName, String schemaName, String objectName) {
-        checkLowerCase(catalogName, "catalogName");
+    public static void checkObjectName(String schemaName, String objectName) {
         checkLowerCase(schemaName, "schemaName");
         checkLowerCase(objectName, "objectName");
     }
@@ -65,8 +64,7 @@ public class MetadataUtil {
         String objectName = parts.get(0);
         String schemaName = (parts.size() > 1) ? parts.get(1) : metadataService.getSchema().orElseThrow(() ->
                 SemanticExceptions.semanticException(node, "Schema must be specified when session schema is not set"));
-        String catalogName = (parts.size() > 2) ? parts.get(2) : metadataService.getCatalog().orElseThrow(() ->
-                SemanticExceptions.semanticException(node, "Catalog must be specified when session catalog is not set"));
+        String catalogName = (parts.size() > 2) ? parts.get(2) : null;
 
         return new QualifiedObjectName(catalogName, schemaName, objectName);
     }
