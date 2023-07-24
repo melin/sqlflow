@@ -23,7 +23,9 @@ public class PrestoSqlLineageTest extends AbstractSqlLineageTest {
 
     @Test
     public void testInsertInto() throws Exception {
-        String sql = "insert into demo select concat(a.col1, '-', a.col2), sum(a.row_num) as num from test a where ds='201912' group by type";
+        String sql = "insert into demo select concat(a.col1, '-', a.col2), " +
+                "sum(a.row_num * 1.00000) as num " +
+                "from test a where ds='201912' group by type";
         Statement statement = SQL_PARSER.createStatement(sql);
 
         Analysis analysis = new Analysis(statement, emptyMap());

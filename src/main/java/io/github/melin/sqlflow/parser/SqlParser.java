@@ -17,6 +17,7 @@ import java.util.List;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
 
+import static io.github.melin.sqlflow.parser.ParsingOptions.DecimalLiteralTreatment.AS_DECIMAL;
 import static java.util.Objects.requireNonNull;
 
 /**
@@ -39,7 +40,9 @@ public class SqlParser {
 
     public Statement createStatement(String sql) {
         try {
-            return (Statement) invokeParser("statement", sql, SqlFlowParser::singleStatement, new ParsingOptions());
+            return (Statement) invokeParser("statement", sql,
+                    SqlFlowParser::singleStatement,
+                    new ParsingOptions(AS_DECIMAL));
         } catch (ParseException e) {
             if(StringUtils.isNotBlank(e.getCommand())) {
                 throw e;
