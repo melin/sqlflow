@@ -50,7 +50,7 @@ class FlinkSqlLineageTest1 {
         val tables = Lists.newArrayList<SchemaTable>()
         for (statement in statements) {
             if (statement is CreateTable) {
-                val columns = statement.columnRels?.map { it.name }
+                val columns = statement.columnRels?.map { it.columnName }
                 val table = SchemaTable(
                     "default",
                     statement.tableId.getFullTableName(),

@@ -75,7 +75,7 @@ class FlinkSqlLineageTest2 {
         val tables = Lists.newArrayList<SchemaTable>()
         for (statement in statements) {
             if (statement is CreateTable) {
-                val columns = statement.columnRels?.map { it.name }
+                val columns = statement.columnRels?.map { it.columnName }
                 val table = SchemaTable(
                     "fengchao_sync",
                     statement.tableId.getFullTableName(),
