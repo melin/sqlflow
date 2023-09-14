@@ -124,11 +124,9 @@ public class SqlParser {
         @Override
         public void exitBackQuotedIdentifier(SqlFlowParser.BackQuotedIdentifierContext context) {
             Token token = context.BACKQUOTED_IDENTIFIER().getSymbol();
-            throw new ParsingException(
-                    "backquoted identifiers are not supported; use double quotes to quote identifiers",
-                    null,
-                    token.getLine(),
-                    token.getCharPositionInLine() + 1);
+            if (token.getText().length() == 2) { // empty identifier
+                throw new ParsingException("Zero-length delimited identifier not allowed", null, token.getLine(), token.getCharPositionInLine() + 1);
+            }
         }
 
         @Override

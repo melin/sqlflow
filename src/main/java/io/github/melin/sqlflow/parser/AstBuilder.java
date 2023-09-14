@@ -1359,6 +1359,14 @@ public class AstBuilder extends SqlFlowParserBaseVisitor<Node> {
     }
 
     @Override
+    public Node visitBackQuotedIdentifier(SqlFlowParser.BackQuotedIdentifierContext context) {
+        String token = context.getText();
+        String identifier = token.substring(1, token.length() - 1);
+
+        return new Identifier(getLocation(context), identifier, true);
+    }
+
+    @Override
     public Node visitPatternAlternation(SqlFlowParser.PatternAlternationContext context) {
         List<RowPattern> parts = visit(context.rowPattern(), RowPattern.class);
         return new PatternAlternation(getLocation(context), parts);
@@ -1792,7 +1800,8 @@ public class AstBuilder extends SqlFlowParserBaseVisitor<Node> {
     }
 
     private QualifiedName getQualifiedName(SqlFlowParser.QualifiedNameContext context) {
-        return QualifiedName.of(visit(context.identifier(), Identifier.class));
+        List<Identifier> identifier = visit(context.identifier(), Identifier.class);
+        return QualifiedName.of(identifier);
     }
 
     private static boolean isDistinct(SqlFlowParser.SetQuantifierContext setQuantifier) {
