@@ -39,6 +39,7 @@ public class Scope {
     private final RelationId relationId;
     private final RelationType relation;
     private final Map<String, WithQuery> namedQueries;
+    private final boolean caseSensitive;
 
     public static Scope create() {
         return builder().build();
@@ -53,16 +54,18 @@ public class Scope {
             boolean queryBoundary,
             RelationId relationId,
             RelationType relation,
-            Map<String, WithQuery> namedQueries) {
+            Map<String, WithQuery> namedQueries,
+            boolean caseSensitive) {
         this.parent = requireNonNull(parent, "parent is null");
         this.relationId = requireNonNull(relationId, "relationId is null");
         this.queryBoundary = queryBoundary;
         this.relation = requireNonNull(relation, "relation is null");
         this.namedQueries = ImmutableMap.copyOf(requireNonNull(namedQueries, "namedQueries is null"));
+        this.caseSensitive = caseSensitive;
     }
 
     public Scope withRelationType(RelationType relationType) {
-        return new Scope(parent, queryBoundary, relationId, relationType, namedQueries);
+        return new Scope(parent, queryBoundary, relationId, relationType, namedQueries, caseSensitive);
     }
 
     public Scope getQueryBoundaryScope() {
@@ -217,7 +220,7 @@ public class Scope {
     }
 
     private Optional<ResolvedField> resolveField(Expression node, QualifiedName name, boolean local) {
-        List<Field> matches = relation.resolveFields(name);
+        List<Field> matches = relation.resolveFields(name, caseSensitive);
         if (matches.size() > 1) {
             throw ambiguousAttributeException(node, name);
         } else if (matches.size() == 1) {
@@ -268,10 +271,10 @@ public class Scope {
         return false;
     }
 
-    private static boolean isColumnReference(QualifiedName name, RelationType relation) {
+    private boolean isColumnReference(QualifiedName name, RelationType relation) {
         while (name.getPrefix().isPresent()) {
             name = name.getPrefix().get();
-            if (!relation.resolveFields(name).isEmpty()) {
+            if (!relation.resolveFields(name, caseSensitive).isEmpty()) {
                 return true;
             }
         }
@@ -303,6 +306,7 @@ public class Scope {
         private final Map<String, WithQuery> namedQueries = new HashMap<>();
         private Optional<Scope> parent = Optional.empty();
         private boolean queryBoundary;
+        private boolean caseSensitive;
 
         public Builder like(Scope other) {
             relationId = other.relationId;
@@ -338,12 +342,17 @@ public class Scope {
             return this;
         }
 
+        public Builder withCaseSensitive(boolean caseSensitive) {
+            this.caseSensitive = caseSensitive;
+            return this;
+        }
+
         public boolean containsNamedQuery(String name) {
             return namedQueries.containsKey(name);
         }
 
         public Scope build() {
-            return new Scope(parent, queryBoundary, relationId, relationType, namedQueries);
+            return new Scope(parent, queryBoundary, relationId, relationType, namedQueries, caseSensitive);
         }
     }
 

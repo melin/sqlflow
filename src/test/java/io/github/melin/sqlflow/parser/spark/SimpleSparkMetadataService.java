@@ -31,7 +31,7 @@ public class SimpleSparkMetadataService implements MetadataService {
 
     @Override
     public Optional<SchemaTable> getTableSchema(QualifiedObjectName table) {
-        if (table.getObjectName().equals("test")) {
+        if (table.getObjectName().equalsIgnoreCase("test")) {
             List<String> columns = Lists.newArrayList();
             columns.add("col1");
             columns.add("col2");
@@ -40,7 +40,7 @@ public class SimpleSparkMetadataService implements MetadataService {
             columns.add("ds");
 
             return Optional.of(new SchemaTable("test", columns));
-        } else if (table.getObjectName().equals("demo")) {
+        } else if (table.getObjectName().equalsIgnoreCase("demo")) {
             List<String> columns = Lists.newArrayList();
             columns.add("name");
             columns.add("row_num");

@@ -14,6 +14,7 @@ import java.util.Optional;
  * huaixin 2021/12/25 6:13 PM
  */
 public class SimplePrestoMetadataService implements MetadataService {
+
     @Override
     public Optional<String> getSchema() {
         return Optional.of("default");
@@ -33,19 +34,19 @@ public class SimplePrestoMetadataService implements MetadataService {
     public Optional<SchemaTable> getTableSchema(QualifiedObjectName table) {
         if (table.getObjectName().equals("test")) {
             List<String> columns = Lists.newArrayList();
-            columns.add("col1");
-            columns.add("col2");
+            columns.add("COL1");
+            columns.add("COL2");
             columns.add("type");
             columns.add("row_num");
             columns.add("ds");
 
             return Optional.of(new SchemaTable("default", "test", columns));
-        } else if (table.getObjectName().equals("demo")) {
+        } else if (table.getObjectName().equals("Demo")) {
             List<String> columns = Lists.newArrayList();
-            columns.add("name");
+            columns.add("NAME");
             columns.add("row_num");
 
-            return Optional.of(new SchemaTable("default", "demo", columns));
+            return Optional.of(new SchemaTable("default", "Demo", columns));
         }
         return Optional.empty();
     }

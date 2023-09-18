@@ -103,14 +103,10 @@ public class RelationType {
     /**
      * Gets the index of all columns matching the specified name
      */
-    public List<Field> resolveFields(QualifiedName name) {
+    public List<Field> resolveFields(QualifiedName name, boolean caseSensitive) {
         return allFields.stream()
-                .filter(input -> input.canResolve(name))
+                .filter(input -> input.canResolve(name, caseSensitive))
                 .collect(toImmutableList());
-    }
-
-    public boolean canResolve(QualifiedName name) {
-        return !resolveFields(name).isEmpty();
     }
 
     /**

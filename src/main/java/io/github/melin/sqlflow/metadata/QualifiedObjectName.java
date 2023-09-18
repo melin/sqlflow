@@ -30,7 +30,6 @@ public class QualifiedObjectName {
     private final String objectName;
 
     public QualifiedObjectName(String catalogName, String schemaName, String objectName) {
-        MetadataUtil.checkObjectName(schemaName, objectName);
         this.catalogName = catalogName;
         this.schemaName = schemaName;
         this.objectName = objectName;

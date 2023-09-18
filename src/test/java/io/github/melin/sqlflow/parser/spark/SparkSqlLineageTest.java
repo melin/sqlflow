@@ -21,7 +21,7 @@ public class SparkSqlLineageTest extends AbstractSqlLineageTest {
 
     @Test
     public void testInsertInto() throws Exception {
-        String sql = "insert into db2.demo select concat(a.col1, '-', a.col2), a.row_num from db1.test a where ds='201912'";
+        String sql = "insert into db2.Demo select concat(a.COL1, '-', a.COL2), a.row_num from db1.test a where ds='201912'";
         Statement statement = SQL_PARSER.createStatement(sql);
 
         Analysis analysis = new Analysis(statement, emptyMap());

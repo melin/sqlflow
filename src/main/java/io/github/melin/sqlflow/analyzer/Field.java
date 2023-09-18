@@ -115,13 +115,17 @@ public class Field {
        "x"        "y.a"         n
        "x.y"      "y.a"         y
      */
-    public boolean canResolve(QualifiedName name) {
+    public boolean canResolve(QualifiedName name, boolean caseSensitive) {
         if (!this.name.isPresent()) {
             return false;
         }
 
         // TODO: need to know whether the qualified name and the name of this field were quoted
-        return matchesPrefix(name.getPrefix()) && this.name.get().equalsIgnoreCase(name.getSuffix());
+        if (caseSensitive) {
+            return matchesPrefix(name.getPrefix()) && this.name.get().equals(name.getSuffix());
+        } else {
+            return matchesPrefix(name.getPrefix()) && this.name.get().equalsIgnoreCase(name.getSuffix());
+        }
     }
 
     @Override

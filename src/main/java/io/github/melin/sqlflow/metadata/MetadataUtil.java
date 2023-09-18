@@ -7,9 +7,7 @@ import io.github.melin.sqlflow.analyzer.SemanticExceptions;
 import com.google.common.collect.Lists;
 
 import java.util.List;
-import java.util.Optional;
 
-import static io.github.melin.sqlflow.analyzer.SemanticExceptions.semanticException;
 import static com.google.common.base.Preconditions.checkArgument;
 import static java.lang.String.format;
 import static java.util.Locale.ENGLISH;
@@ -19,39 +17,6 @@ import static java.util.Objects.requireNonNull;
  * huaixin 2021/12/24 11:28 AM
  */
 public class MetadataUtil {
-
-    public static void checkTableName(String catalogName, Optional<String> schemaName, Optional<String> tableName) {
-        checkCatalogName(catalogName);
-        schemaName.ifPresent(name -> checkLowerCase(name, "schemaName"));
-        tableName.ifPresent(name -> checkLowerCase(name, "tableName"));
-
-        checkArgument(schemaName.isPresent() || tableName == null, "tableName specified but schemaName is missing");
-    }
-
-    public static String checkCatalogName(String catalogName) {
-        return checkLowerCase(catalogName, "catalogName");
-    }
-
-    public static String checkSchemaName(String schemaName) {
-        return checkLowerCase(schemaName, "schemaName");
-    }
-
-    public static String checkTableName(String tableName) {
-        return checkLowerCase(tableName, "tableName");
-    }
-
-    public static void checkObjectName(String schemaName, String objectName) {
-        checkLowerCase(schemaName, "schemaName");
-        checkLowerCase(objectName, "objectName");
-    }
-
-    public static String checkLowerCase(String value, String name) {
-        if (value == null) {
-            throw new NullPointerException(format("%s is null", name));
-        }
-        checkArgument(value.equals(value.toLowerCase(ENGLISH)), "%s is not lowercase: %s", name, value);
-        return value;
-    }
 
     public static QualifiedObjectName createQualifiedObjectName(MetadataService metadataService, Node node, QualifiedName name) {
         requireNonNull(metadataService, "metadata is null");

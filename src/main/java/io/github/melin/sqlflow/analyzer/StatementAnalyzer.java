@@ -61,10 +61,20 @@ public class StatementAnalyzer {
 
     private final SqlParser sqlParser;
 
+    private final boolean caseSensitive;
+
     public StatementAnalyzer(Analysis analysis, MetadataService metadataService, SqlParser sqlParser) {
         this.analysis = requireNonNull(analysis, "analysis is null");
         this.metadataService = requireNonNull(metadataService, "metadata is null");
         this.sqlParser = requireNonNull(sqlParser, "sqlParser is null");
+        this.caseSensitive = false;
+    }
+
+    public StatementAnalyzer(Analysis analysis, MetadataService metadataService, SqlParser sqlParser, boolean caseSensitive) {
+        this.analysis = requireNonNull(analysis, "analysis is null");
+        this.metadataService = requireNonNull(metadataService, "metadata is null");
+        this.sqlParser = requireNonNull(sqlParser, "sqlParser is null");
+        this.caseSensitive = caseSensitive;
     }
 
     public Scope analyze(Node node, Scope outerQueryScope) {
@@ -452,7 +462,10 @@ public class StatementAnalyzer {
             Scope.Builder withScopeBuilder = scopeBuilder(scope);
 
             for (WithQuery withQuery : with.getQueries()) {
-                String name = withQuery.getName().getValue().toLowerCase(ENGLISH);
+                String name = withQuery.getName().getValue();
+                if (!caseSensitive) {
+                    name = name.toLowerCase(ENGLISH);
+                }
                 if (withScopeBuilder.containsNamedQuery(name)) {
                     throw semanticException(withQuery, "WITH query name '%s' specified more than once", name);
                 }
@@ -495,10 +508,15 @@ public class StatementAnalyzer {
             validateColumnAliasesCount(columnAliases, sourceColumnSize);
             Set<String> names = new HashSet<>();
             for (Identifier identifier : columnAliases) {
-                if (names.contains(identifier.getValue().toLowerCase(ENGLISH))) {
+                String value = identifier.getValue();
+                if (!caseSensitive) {
+                    value = value.toLowerCase(ENGLISH);
+                }
+
+                if (names.contains(value)) {
                     throw semanticException(identifier, "Column name '%s' specified more than once", identifier.getValue());
                 }
-                names.add(identifier.getValue().toLowerCase(ENGLISH));
+                names.add(value);
             }
         }
 
@@ -1374,7 +1392,7 @@ public class StatementAnalyzer {
                     }
 
                     if (name != null) {
-                        List<Field> matchingFields = sourceScope.getRelationType().resolveFields(name);
+                        List<Field> matchingFields = sourceScope.getRelationType().resolveFields(name, caseSensitive);
                         if (!matchingFields.isEmpty()) {
                             originTable = matchingFields.get(0).getOriginTable();
                             originColumn = matchingFields.get(0).getOriginColumnName();

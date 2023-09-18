@@ -42,7 +42,7 @@ public class QualifiedName {
 
     private QualifiedName(List<Identifier> originalParts) {
         this.originalParts = originalParts;
-        this.parts = originalParts.stream().map(identifier -> identifier.getValue().toLowerCase(ENGLISH)).collect(toImmutableList());
+        this.parts = originalParts.stream().map(Identifier::getValue).collect(toImmutableList());
     }
 
     public List<String> getParts() {

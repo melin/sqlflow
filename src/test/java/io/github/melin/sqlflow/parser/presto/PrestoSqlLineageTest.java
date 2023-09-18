@@ -23,21 +23,22 @@ public class PrestoSqlLineageTest extends AbstractSqlLineageTest {
 
     @Test
     public void testInsertInto() throws Exception {
-        String sql = "insert into demo select concat(a.col1, '-', a.col2), " +
+        String sql = "insert into Demo select concat(a.COL1, '-', a.COL2), " +
                 "sum(a.row_num * 1.00000) as num " +
                 "from test a where ds='201912' group by type";
         Statement statement = SQL_PARSER.createStatement(sql);
 
         Analysis analysis = new Analysis(statement, emptyMap());
-        StatementAnalyzer statementAnalyzer = new StatementAnalyzer(analysis, new SimplePrestoMetadataService(), SQL_PARSER);
+        StatementAnalyzer statementAnalyzer = new StatementAnalyzer(
+                analysis, new SimplePrestoMetadataService(), SQL_PARSER, false);
         
         statementAnalyzer.analyze(statement, Optional.empty());
 
         //System.out.println(MapperUtils.toJSONString(analysis.getTarget().get()));
 
-        assertLineage(analysis, new OutputColumn("name", ImmutableSet.of(
-                new Analysis.SourceColumn(QualifiedObjectName.valueOf("default.test"), "col1"),
-                new Analysis.SourceColumn(QualifiedObjectName.valueOf("default.test"), "col2")
+        assertLineage(analysis, new OutputColumn("NAME", ImmutableSet.of(
+                new Analysis.SourceColumn(QualifiedObjectName.valueOf("default.test"), "COL1"),
+                new Analysis.SourceColumn(QualifiedObjectName.valueOf("default.test"), "COL2")
         )), new OutputColumn("row_num", ImmutableSet.of(
                 new Analysis.SourceColumn(QualifiedObjectName.valueOf("default.test"), "row_num")
         )));
