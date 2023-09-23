@@ -965,6 +965,17 @@ public class AstBuilder extends SqlFlowParserBaseVisitor<Node> {
     }
 
     @Override
+    public Node visitSpecialDateTimeFunction(SqlFlowParser.SpecialDateTimeFunctionContext context) {
+        CurrentTime.Function function = getDateTimeFunctionType(context.name);
+
+        if (context.precision != null) {
+            return new CurrentTime(getLocation(context), function, Integer.parseInt(context.precision.getText()));
+        }
+
+        return new CurrentTime(getLocation(context), function);
+    }
+
+    @Override
     public Node visitCurrentCatalog(SqlFlowParser.CurrentCatalogContext context) {
         return new CurrentCatalog(getLocation(context.CURRENT_CATALOG()));
     }
@@ -977,6 +988,11 @@ public class AstBuilder extends SqlFlowParserBaseVisitor<Node> {
     @Override
     public Node visitCurrentUser(SqlFlowParser.CurrentUserContext context) {
         return new CurrentUser(getLocation(context.CURRENT_USER()));
+    }
+
+    @Override
+    public Node visitCurrentPath(SqlFlowParser.CurrentPathContext context) {
+        return new CurrentPath(getLocation(context.CURRENT_PATH()));
     }
 
     @Override
@@ -1858,6 +1874,23 @@ public class AstBuilder extends SqlFlowParserBaseVisitor<Node> {
         }
 
         throw new IllegalArgumentException("Unsupported operator: " + symbol.getText());
+    }
+
+    private static CurrentTime.Function getDateTimeFunctionType(Token token) {
+        switch (token.getType()) {
+            case SqlFlowLexer.CURRENT_DATE:
+                return CurrentTime.Function.DATE;
+            case SqlFlowLexer.CURRENT_TIME:
+                return CurrentTime.Function.TIME;
+            case SqlFlowLexer.CURRENT_TIMESTAMP:
+                return CurrentTime.Function.TIMESTAMP;
+            case SqlFlowLexer.LOCALTIME:
+                return CurrentTime.Function.LOCALTIME;
+            case SqlFlowLexer.LOCALTIMESTAMP:
+                return CurrentTime.Function.LOCALTIMESTAMP;
+        }
+
+        throw new IllegalArgumentException("Unsupported special function: " + token.getText());
     }
 
     private static IntervalLiteral.IntervalField getIntervalFieldType(Token token) {

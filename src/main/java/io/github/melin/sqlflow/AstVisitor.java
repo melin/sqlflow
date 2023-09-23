@@ -357,7 +357,15 @@ public abstract class AstVisitor<R, C> {
         return visitExpression(node, context);
     }
 
+    public R visitCurrentTime(CurrentTime node, C context) {
+        return visitExpression(node, context);
+    }
+
     public R visitExtract(Extract node, C context) {
+        return visitExpression(node, context);
+    }
+
+    public R visitCurrentPath(CurrentPath node, C context) {
         return visitExpression(node, context);
     }
 
