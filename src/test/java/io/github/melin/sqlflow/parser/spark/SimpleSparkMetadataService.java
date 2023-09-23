@@ -37,6 +37,7 @@ public class SimpleSparkMetadataService implements MetadataService {
             columns.add("col2");
             columns.add("type");
             columns.add("row_num");
+            columns.add("desc");
             columns.add("ds");
 
             return Optional.of(new SchemaTable("test", columns));
