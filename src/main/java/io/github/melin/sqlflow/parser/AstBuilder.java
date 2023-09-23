@@ -151,6 +151,19 @@ public class AstBuilder extends SqlFlowParserBaseVisitor<Node> {
     }
 
     @Override
+    public Node visitInsertOverWrite(SqlFlowParser.InsertOverWriteContext context) {
+        Optional<List<Identifier>> columnAliases = Optional.empty();
+        if (context.columnAliases() != null) {
+            columnAliases = Optional.of(visit(context.columnAliases().identifier(), Identifier.class));
+        }
+
+        return new Insert(
+                new Table(getQualifiedName(context.qualifiedName())),
+                columnAliases,
+                (Query) visit(context.query()));
+    }
+
+    @Override
     public Node visitDelete(SqlFlowParser.DeleteContext context) {
         return new Delete(
                 getLocation(context),
