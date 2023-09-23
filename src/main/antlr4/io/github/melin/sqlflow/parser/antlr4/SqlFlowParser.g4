@@ -444,15 +444,15 @@ primaryExpression
     | value=primaryExpression LEFT_BRACKET index=valueExpression RIGHT_BRACKET                               #subscript
     | identifier                                                                          #columnReference
     | base=primaryExpression DOT fieldName=identifier                                     #dereference
-    | name=CURRENT_DATE                                                                   #specialDateTimeFunction
+/*    | name=CURRENT_DATE                                                                   #specialDateTimeFunction
     | name=CURRENT_TIME (LEFT_PAREN precision=INTEGER_VALUE RIGHT_PAREN)?                                #specialDateTimeFunction
     | name=CURRENT_TIMESTAMP (LEFT_PAREN precision=INTEGER_VALUE RIGHT_PAREN)?                           #specialDateTimeFunction
     | name=LOCALTIME (LEFT_PAREN precision=INTEGER_VALUE RIGHT_PAREN)?                                   #specialDateTimeFunction
-    | name=LOCALTIMESTAMP (LEFT_PAREN precision=INTEGER_VALUE RIGHT_PAREN)?                              #specialDateTimeFunction
+    | name=LOCALTIMESTAMP (LEFT_PAREN precision=INTEGER_VALUE RIGHT_PAREN)?                              #specialDateTimeFunction*/
     | name=CURRENT_USER                                                                   #currentUser
     | name=CURRENT_CATALOG                                                                #currentCatalog
     | name=CURRENT_SCHEMA                                                                 #currentSchema
-    | name=CURRENT_PATH                                                                   #currentPath
+/*    | name=CURRENT_PATH                                                                   #currentPath*/
     | SUBSTRING LEFT_PAREN valueExpression FROM valueExpression (FOR valueExpression)? RIGHT_PAREN       #substring
     | NORMALIZE LEFT_PAREN valueExpression (COMMA normalForm)? RIGHT_PAREN                                 #normalize
     | EXTRACT LEFT_PAREN identifier FROM valueExpression RIGHT_PAREN                                     #extract

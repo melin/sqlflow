@@ -44,6 +44,7 @@ public class SimpleSparkMetadataService implements MetadataService {
             List<String> columns = Lists.newArrayList();
             columns.add("name");
             columns.add("row_num");
+            columns.add("data_store_time");
 
             return Optional.of(new SchemaTable("demo", columns));
         }
