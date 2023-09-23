@@ -21,7 +21,8 @@ public class SparkSqlLineageTest extends AbstractSqlLineageTest {
 
     @Test
     public void testInsertInto() throws Exception {
-        String sql = "insert overwrite table db2.Demo select concat(a.COL1, '-', a.COL2), a.row_num from db1.test a where ds='201912'";
+        String sql = "insert overwrite table db2.Demo select concat(a.COL1, '-', a.COL2), a.row_num, " +
+                " substr(current_timestamp(),1,19) AS data_store_time from db1.test a where ds='201912'";
         Statement statement = SQL_PARSER.createStatement(sql);
 
         Analysis analysis = new Analysis(statement, emptyMap());

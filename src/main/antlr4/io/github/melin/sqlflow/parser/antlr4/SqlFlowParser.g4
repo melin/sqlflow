@@ -444,9 +444,12 @@ primaryExpression
     | value=primaryExpression LEFT_BRACKET index=valueExpression RIGHT_BRACKET                               #subscript
     | identifier                                                                          #columnReference
     | base=primaryExpression DOT fieldName=identifier                                     #dereference
-    | name=CURRENT_DATE                                                                   #specialDateTimeFunction
+    | name=CURRENT_DATE                                                                                  #specialDateTimeFunction
+    | name=CURRENT_DATE LEFT_PAREN RIGHT_PAREN                                                           #specialDateTimeFunction
     | name=CURRENT_TIME (LEFT_PAREN precision=INTEGER_VALUE RIGHT_PAREN)?                                #specialDateTimeFunction
+    | name=CURRENT_TIME LEFT_PAREN RIGHT_PAREN                                                           #specialDateTimeFunction
     | name=CURRENT_TIMESTAMP (LEFT_PAREN precision=INTEGER_VALUE RIGHT_PAREN)?                           #specialDateTimeFunction
+    | name=CURRENT_TIMESTAMP LEFT_PAREN RIGHT_PAREN                                                      #specialDateTimeFunction
     | name=LOCALTIME (LEFT_PAREN precision=INTEGER_VALUE RIGHT_PAREN)?                                   #specialDateTimeFunction
     | name=LOCALTIMESTAMP (LEFT_PAREN precision=INTEGER_VALUE RIGHT_PAREN)?                              #specialDateTimeFunction
     | name=CURRENT_USER                                                                   #currentUser
