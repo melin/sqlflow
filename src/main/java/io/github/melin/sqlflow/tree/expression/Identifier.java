@@ -41,7 +41,6 @@ public class Identifier extends Expression {
         this.delimited = delimited;
 
         checkArgument(!value.isEmpty(), "value is empty");
-        checkArgument(delimited || NAME_PATTERN.matcher(value).matches(), "value contains illegal characters: %s", value);
     }
 
     public String getValue() {

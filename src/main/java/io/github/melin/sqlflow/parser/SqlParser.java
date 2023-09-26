@@ -114,32 +114,6 @@ public class SqlParser {
         }
 
         @Override
-        public void exitQuotedIdentifier(SqlFlowParser.QuotedIdentifierContext context) {
-            Token token = context.QUOTED_IDENTIFIER().getSymbol();
-            if (token.getText().length() == 2) { // empty identifier
-                throw new ParsingException("Zero-length delimited identifier not allowed", null, token.getLine(), token.getCharPositionInLine() + 1);
-            }
-        }
-
-        @Override
-        public void exitBackQuotedIdentifier(SqlFlowParser.BackQuotedIdentifierContext context) {
-            Token token = context.BACKQUOTED_IDENTIFIER().getSymbol();
-            if (token.getText().length() == 2) { // empty identifier
-                throw new ParsingException("Zero-length delimited identifier not allowed", null, token.getLine(), token.getCharPositionInLine() + 1);
-            }
-        }
-
-        @Override
-        public void exitDigitIdentifier(SqlFlowParser.DigitIdentifierContext context) {
-            Token token = context.DIGIT_IDENTIFIER().getSymbol();
-            throw new ParsingException(
-                    "identifiers must not start with a digit; surround the identifier with double quotes",
-                    null,
-                    token.getLine(),
-                    token.getCharPositionInLine() + 1);
-        }
-
-        @Override
         public void exitNonReserved(SqlFlowParser.NonReservedContext context) {
             // we can't modify the tree during rule enter/exit event handling unless we're dealing with a terminal.
             // Otherwise, ANTLR gets confused and fires spurious notifications.
