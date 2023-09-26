@@ -1554,9 +1554,16 @@ public class AstBuilder extends SqlFlowParserBaseVisitor<Node> {
 
     @Override
     public Node visitInterval(SqlFlowParser.IntervalContext context) {
+        String value = null;
+        if (context.string() != null) {
+            value = ((StringLiteral) visit(context.string())).getValue();
+        } else {
+            value = context.INTEGER_VALUE().getText();
+        }
+
         return new IntervalLiteral(
                 getLocation(context),
-                ((StringLiteral) visit(context.string())).getValue(),
+                value,
                 Optional.ofNullable(context.sign)
                         .map(AstBuilder::getIntervalSign)
                         .orElse(IntervalLiteral.Sign.POSITIVE),
