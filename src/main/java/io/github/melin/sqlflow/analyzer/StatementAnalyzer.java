@@ -53,8 +53,6 @@ import static java.util.Objects.requireNonNull;
  */
 public class StatementAnalyzer {
 
-    private static final Set<String> WINDOW_VALUE_FUNCTIONS = ImmutableSet.of("lead", "lag", "first_value", "last_value", "nth_value");
-
     private final MetadataService metadataService;
 
     private final Analysis analysis;
@@ -122,8 +120,9 @@ public class StatementAnalyzer {
 
         @Override
         public Scope visitInsert(Insert insert, Optional<Scope> scope) {
+            Scope withScope = analyzeWith(insert.getWith(), scope);
             QualifiedObjectName targetTable = MetadataUtil.createQualifiedObjectName(metadataService, insert, insert.getTarget());
-            Scope queryScope = analyze(insert.getQuery(), createScope(scope));
+            Scope queryScope = visitQuery(insert.getQuery(), Optional.of(withScope));
 
             Optional<SchemaTable> tableSchema = metadataService.getTableSchema(targetTable);
 
@@ -378,7 +377,7 @@ public class StatementAnalyzer {
 
         @Override
         public Scope visitQuery(Query node, Optional<Scope> scope) {
-            Scope withScope = analyzeWith(node, scope);
+            Scope withScope = analyzeWith(node.getWith(), scope);
             Scope queryBodyScope = process(node.getQueryBody(), withScope);
 
             List<Expression> orderByExpressions = emptyList();
@@ -452,13 +451,13 @@ public class StatementAnalyzer {
             return createAndAssignScope(node, scope, outputFields.build());
         }
 
-        private Scope analyzeWith(Query node, Optional<Scope> scope) {
-            if (!node.getWith().isPresent()) {
+        private Scope analyzeWith(Optional<With> withOpt, Optional<Scope> scope) {
+            if (!withOpt.isPresent()) {
                 return createScope(scope);
             }
 
             // analyze WITH clause
-            With with = node.getWith().get();
+            With with = withOpt.get();
             Scope.Builder withScopeBuilder = scopeBuilder(scope);
 
             for (WithQuery withQuery : with.getQueries()) {

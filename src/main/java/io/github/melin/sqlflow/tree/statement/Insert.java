@@ -20,16 +20,18 @@ import static java.util.Objects.requireNonNull;
  * huaixin 2021/12/18 10:22 PM
  */
 public final class Insert extends Statement {
+    private final Optional<With> with;
     private final Table table;
     private final Query query;
     private final Optional<List<Identifier>> columns;
 
-    public Insert(Table table, Optional<List<Identifier>> columns, Query query) {
-        this(Optional.empty(), table, columns, query);
+    public Insert(Optional<With> with, Table table, Optional<List<Identifier>> columns, Query query) {
+        this(Optional.empty(), with, table, columns, query);
     }
 
-    private Insert(Optional<NodeLocation> location, Table table, Optional<List<Identifier>> columns, Query query) {
+    private Insert(Optional<NodeLocation> location, Optional<With> with, Table table, Optional<List<Identifier>> columns, Query query) {
         super(location);
+        this.with = with;
         this.table = requireNonNull(table, "target is null");
         this.columns = requireNonNull(columns, "columns is null");
         this.query = requireNonNull(query, "query is null");
@@ -49,6 +51,10 @@ public final class Insert extends Statement {
 
     public Query getQuery() {
         return query;
+    }
+
+    public Optional<With> getWith() {
+        return with;
     }
 
     @Override

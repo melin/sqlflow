@@ -145,6 +145,7 @@ public class AstBuilder extends SqlFlowParserBaseVisitor<Node> {
         }
 
         return new Insert(
+                visitIfPresent(context.with(), With.class),
                 new Table(getQualifiedName(context.qualifiedName())),
                 columnAliases,
                 (Query) visit(context.query()));
@@ -158,6 +159,7 @@ public class AstBuilder extends SqlFlowParserBaseVisitor<Node> {
         }
 
         return new Insert(
+                visitIfPresent(context.with(), With.class),
                 new Table(getQualifiedName(context.qualifiedName())),
                 columnAliases,
                 (Query) visit(context.query()));
