@@ -154,11 +154,17 @@ sortItem
 
 querySpecification
     : SELECT setQuantifier? selectItem (COMMA selectItem)*
+      lateralView*
       (FROM relation (COMMA relation)*)?
+      lateralView*
       (WHERE where=booleanExpression)?
       (GROUP BY groupBy)?
       (HAVING having=booleanExpression)?
       (WINDOW windowDefinition (COMMA windowDefinition)*)?
+    ;
+
+lateralView
+    : LATERAL VIEW qualifiedName LEFT_PAREN (expression (COMMA expression)*)? RIGHT_PAREN tblName=identifier (AS? colName+=identifier (COMMA colName+=identifier)*)?
     ;
 
 groupBy
