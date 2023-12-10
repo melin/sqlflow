@@ -21,12 +21,12 @@ class FlinkSqlLineageTest2 {
     @Throws(Exception::class)
     fun testInsertInto() {
         val script = """
-            CREATE TABLE ods_pms_rm_fan_start_stop_record (
-                id INT,
-                wind_number VARCHAR(512),
-                wind_name FLOAT,
-                fan_name INT,
-                halt_stop_time INT,
+            CREATE TABLE dws_res_fan_d (
+                biz_date INT,
+                fan_num VARCHAR(512),
+                avg_wind_speed FLOAT,
+                avg_efftv_wind_speed INT,
+                turblc_intst INT,
                 halt_start_time INT, 
                 maintain_start_time INT,
                 shutdown_fault_type_id INT,
@@ -41,17 +41,24 @@ class FlinkSqlLineageTest2 {
                 'jdbc.properties.useSSL' = 'false'
               );
               
-           CREATE TABLE dim_pub_shutdown_fault_type(
-                shutdown_type_name VARCHAR(255),
-                plan_type VARCHAR(512),
-                id INT
+           CREATE TABLE dwd_res_fan_avg_res_5min(
+                biz_date INT,
+                fan_num VARCHAR(512),
+                avg_wind_speed FLOAT,
+                avg_efftv_wind_speed INT,
+                turblc_intst INT,
+                avg_wind_speed_rec_num INT,
+                avg_efftv_wind_speed_rec_num INT,
+                wind_speed_stdea INT,
+                dt INT
               )
             tblproperties (
                 'jdbc.properties.useSSL' = 'false'
               );
             
-            CREATE TABLE dwd_stat_fan_start_stop_record_src(
-                id VARCHAR(255),
+            CREATE TABLE dws_res_fan_h(
+                biz_date INt,
+                efftv_wind_speed_num VARCHAR(255),
                 wind_number VARCHAR(512),
                 wind_name FLOAT,
                 plan_type_name STRING,
@@ -72,57 +79,72 @@ class FlinkSqlLineageTest2 {
                 'password' = 'epbw1902'
               );
             
-            insert overwrite TABLE dwd_stat_fan_start_stop_record_src
-            SELECT
-              ods_pms_rm_fan_start_stop_record.id,
-              wind_number,
-              wind_name,
-              e.plan_type plan_type_name,
-              case
-                when length(fan_name) = 10 then concat('#0', SUBSTRING(fan_name, 7, 1))
-                when length(fan_name) = 11 then concat('#', SUBSTRING(fan_name, 7, 2))
-                ELSE NULL
-              end as fan_num,
-              from_unixtime (
-                unix_timestamp(halt_start_time, 'yyyy-MM-dd HH:mm:ss'),
-                'yyyy-MM-dd HH:mm:ss'
-              ) halt_start_time,
-              halt_stop_time real_halt_stop_time,
-              case
-                when halt_stop_time is null or halt_stop_time ='' then concat(substr(current_timestamp(),1,10),' 00:00:00')
-                ELSE from_unixtime (
-                  unix_timestamp(halt_stop_time, 'yyyy-MM-dd HH:mm:ss'),
-                  'yyyy-MM-dd HH:mm:ss'
-                )
-              end as halt_stop_time
-              ,maintain_start_time
-              ,shutdown_fault_type_id
-              ,shutdown_fault_type_name
-              ,shutdown_fault_type_relation_name
-              ,halt_hour
-              ,ods_pms_rm_fan_start_stop_record.plan_type
-              ,create_time
-              ,update_time
-            from
-              ods_pms_rm_fan_start_stop_record 
-            left join
-              (
-                  SELECT 
-                         shutdown_type_name
-                        ,case 
-                              when plan_type = 0 then '非计划停机'
-                              when plan_type = 1 then '计划停机'
-                              when plan_type = 2 then '受累计划停运'
-                              when plan_type = 3 then '调度限功率'
-                              else null
-                        end as plan_type
-                        ,id
-                  from dim_pub_shutdown_fault_type
-                ) e
-            on ods_pms_rm_fan_start_stop_record.shutdown_fault_type_id = e.id
-            where
-              fan_name LIKE '%风机'
-              AND is_del = '0' 
+insert overwrite table dws_res_fan_d partition(dt='${'$'}{yyyymmdd}')
+select 
+  t1.biz_date as biz_date,
+  t1.fan_num as fan_num,
+  t1.avg_wind_speed as avg_wind_speed,
+  t1.avg_efftv_wind_speed as avg_efftv_wind_speed,
+  t2.turblc_intst as avg_turblc_intst,
+  t3.efftv_wind_speed_num as efftv_wind_speed_num
+from
+(
+-- 风机日平均风速,平均有效风速
+  select 
+    a.biz_date as biz_date,
+    a.fan_num as fan_num,
+    a.avg_wind_speed / a.avg_wind_speed_rec_num as avg_wind_speed,
+    a.avg_efftv_wind_speed / a.avg_efftv_wind_speed_rec_num as avg_efftv_wind_speed
+  from 
+  (
+    select
+      substr(biz_date,0,10) as biz_date,
+      fan_num,
+      sum(avg_wind_speed * avg_wind_speed_rec_num) as avg_wind_speed,
+      sum(avg_wind_speed_rec_num) as avg_wind_speed_rec_num,
+      sum(avg_efftv_wind_speed * avg_efftv_wind_speed_rec_num) as avg_efftv_wind_speed,
+      sum(avg_efftv_wind_speed_rec_num) as avg_efftv_wind_speed_rec_num
+    from dwd_res_fan_avg_res_5min
+    where dt = '${'$'}{yyyymmdd}' and biz_date is not null
+    group by substr(biz_date,0,10),fan_num
+  ) as a
+) as t1
+left join 
+(
+-- 风机日平均湍流强度
+  select 
+    substr(a.biz_date,0,10) as biz_date,
+    a.fan_num,
+    avg(a.turblc_intst) as  turblc_intst
+  from 
+  (
+    select 
+      biz_date,
+      fan_num,
+      (wind_speed_stdea / avg_wind_speed) as turblc_intst,
+      dt
+    from dwd_res_fan_avg_res_5min
+    where dt = '${'$'}{yyyymmdd}'
+  ) as a 
+  group by substr(a.biz_date,0,10),a.fan_num
+) as t2
+on t1.biz_date = t2.biz_date
+and t1.fan_num = t2.fan_num
+left join 
+(
+-- 有效风速数
+  select
+    substr(biz_date,0,10) as biz_date,
+    fan_num,
+    count(1) as efftv_wind_speed_num
+  from dws_res_fan_h
+  where dt = '${'$'}{yyyymmdd}' and 3 < avg_wind_speed and avg_wind_speed < 25
+  group by substr(biz_date,0,10),fan_num
+) as t3
+on t1.biz_date = t3.biz_date
+and t1.fan_num = t3.fan_num
+order by t1.biz_date,cast(substr(t1.fan_num,2,3) as int);
+
         """.trimIndent()
 
         // sqlflow 只支持 insert as select 语句血缘解析，create table语句需要先解析出元数据信息
