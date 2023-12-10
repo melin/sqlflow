@@ -128,3 +128,12 @@ order by t1.biz_date,cast(substr(t1.fan_num,2,3) as int);
   } ]
 }
 ```
+
+## 相关项目
+1. https://gitee.com/melin/bee
+2. https://github.com/melin/superior-sql-parser
+3. https://github.com/melin/superior-sql-formatter
+4. https://github.com/melin/superior-sql-autocomplete
+5. https://github.com/melin/datatunnel
+6. https://github.com/melin/flink-jobserver
+6. https://github.com/melin/spark-jobserver
