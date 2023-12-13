@@ -422,12 +422,12 @@ public class AstBuilder extends SqlFlowParserBaseVisitor<Node> {
 
     @Override
     public Node visitRollup(SqlFlowParser.RollupContext context) {
-        return new Rollup(getLocation(context), visit(context.expression(), Expression.class));
+        return new Rollup(getLocation(context), visit(context.groupingSet(), Expression.class));
     }
 
     @Override
     public Node visitCube(SqlFlowParser.CubeContext context) {
-        return new Cube(getLocation(context), visit(context.expression(), Expression.class));
+        return new Cube(getLocation(context), visit(context.groupingSet(), Expression.class));
     }
 
     @Override

@@ -168,13 +168,13 @@ lateralView
     ;
 
 groupBy
-    : setQuantifier? groupingElement (COMMA groupingElement)*
+    : setQuantifier? groupingElement ((COMMA)? groupingElement)*
     ;
 
 groupingElement
     : groupingSet                                            #singleGroupingSet
-    | ROLLUP LEFT_PAREN (expression (COMMA expression)*)? RIGHT_PAREN         #rollup
-    | CUBE LEFT_PAREN (expression (COMMA expression)*)? RIGHT_PAREN           #cube
+    | ROLLUP LEFT_PAREN (groupingSet (COMMA groupingSet)*)? RIGHT_PAREN         #rollup
+    | CUBE LEFT_PAREN (groupingSet (COMMA groupingSet)*)? RIGHT_PAREN           #cube
     | GROUPING SETS LEFT_PAREN groupingSet (COMMA groupingSet)* RIGHT_PAREN   #multipleGroupingSets
     ;
 
