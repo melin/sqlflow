@@ -698,7 +698,8 @@ public class ExpressionAnalyzer {
                     return handleResolvedField(node, resolvedField.get(), context);
                 }
                 if (!scope.isColumnReference(qualifiedName)) {
-                    throw missingAttributeException(node, qualifiedName);
+                    return null; // fix 字段来自常量字段
+                    //throw missingAttributeException(node, qualifiedName);
                 }
             }
 
