@@ -1,5 +1,6 @@
 package io.github.melin.sqlflow.analyzer;
 
+import io.github.melin.sqlflow.SqlFlowException;
 import io.github.melin.sqlflow.function.OperatorType;
 import io.github.melin.sqlflow.metadata.MetadataService;
 import io.github.melin.sqlflow.metadata.QualifiedObjectName;
@@ -195,8 +196,12 @@ public class ExpressionAnalyzer {
 
         @Override
         public Type visitIdentifier(Identifier node, StackableAstVisitorContext<Context> context) {
-            ResolvedField resolvedField = context.getContext().getScope().resolveField(node, QualifiedName.of(node.getValue()));
-            return handleResolvedField(node, resolvedField, context);
+            try {
+                ResolvedField resolvedField = context.getContext().getScope().resolveField(node, QualifiedName.of(node.getValue()));
+                return handleResolvedField(node, resolvedField, context);
+            } catch (SqlFlowException e) {
+                return null;
+            }
         }
 
         @Override
