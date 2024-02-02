@@ -401,6 +401,7 @@ predicate[ParserRuleContext value]
     | NOT? BETWEEN (ASYMMETRIC | SYMMETRIC)? lower=valueExpression AND upper=valueExpression        #between
     | NOT? IN LEFT_PAREN expression (COMMA expression)* RIGHT_PAREN                                 #inList
     | NOT? IN LEFT_PAREN query RIGHT_PAREN                                                          #inSubquery
+    | NOT? kind=RLIKE pattern=valueExpression                                                       #patternExpr
     | NOT? LIKE pattern=valueExpression (ESCAPE escape=valueExpression)?                            #like
     | NOT? SIMILAR TO right=valueExpression (ESCAPE escape=valueExpression)?                        #similar
     | IS NOT? NULL                                                                                  #nullPredicate
