@@ -44,12 +44,12 @@ public class SimpleFlinkMetadataService implements MetadataService {
             columns.add("KAFKA_PROCESS_TIME");
 
             return Optional.of(new SchemaTable("retek_xx_item_attr_translate_product_enrichment", columns));
-        } else if (table.getObjectName().equalsIgnoreCase("mdm_dim_lang_lookupmap_oracle")) {
+        } else if (table.getObjectName().equalsIgnoreCase("MDM_DIM_LANG_LOOKUPMAP_ORACLE")) {
             List<String> columns = Lists.newArrayList();
             columns.add("LANG");
             columns.add("ISO_CODE");
 
-            return Optional.of(new SchemaTable("mdm_dim_lang_lookupmap_oracle", columns));
+            return Optional.of(new SchemaTable("MDM_DIM_LANG_LOOKUPMAP_ORACLE", columns));
         } else if (table.getObjectName().equalsIgnoreCase("mdm_dim_uda_item_ff_lookupmap_oracle")) {
             List<String> columns = Lists.newArrayList();
             columns.add("ITEM");
@@ -59,7 +59,7 @@ public class SimpleFlinkMetadataService implements MetadataService {
             columns.add("CREATE_DATETIME");
             columns.add("LAST_UPDATE_DATETIME");
 
-            return Optional.of(new SchemaTable("mdm_dim_lang_lookupmap_oracle", columns));
+            return Optional.of(new SchemaTable("mdm_dim_uda_item_ff_lookupmap_oracle", columns));
         } else if (table.getObjectName().equalsIgnoreCase("mdm_dim_product_attrib_type_lookupmap_mysql")) {
             List<String> columns = Lists.newArrayList();
             columns.add("BU_CODE");

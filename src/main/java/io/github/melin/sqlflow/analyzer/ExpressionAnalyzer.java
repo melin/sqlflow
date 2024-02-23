@@ -133,6 +133,9 @@ public class ExpressionAnalyzer {
     }
 
     public Type setExpressionType(Expression expression, Type type) {
+        requireNonNull(expression, "expression cannot be null");
+
+        expressionTypes.put(NodeRef.of(expression), UNKNOWN);
         return UNKNOWN;
     }
 
@@ -806,7 +809,7 @@ public class ExpressionAnalyzer {
             Type type = UNKNOWN;
             setExpressionType(node, type);
 
-            for (WhenClause whenClause : node.getWhenClauses()) {
+            for (WhenClause whenClause : node.getWhenClauses()) a{
                 Type whenClauseType = process(whenClause.getResult(), context);
                 setExpressionType(whenClause, whenClauseType);
             }

@@ -446,8 +446,8 @@ primaryExpression
     | LEFT_PAREN query RIGHT_PAREN                                                                       #subqueryExpression
     // This is an extension to ANSI SQL, which considers EXISTS to be a <boolean expression>
     | EXISTS LEFT_PAREN query RIGHT_PAREN                                                                #exists
-    | CASE operand=expression whenClause+ (ELSE elseExpression=expression)? END           #simpleCase
-    | CASE whenClause+ (ELSE elseExpression=expression)? END                              #searchedCase
+    | CASE operand=expression whenClause+ (ELSE elseExpression=expression)? END                         #simpleCase
+    | CASE whenClause+ (ELSE elseExpression=expression)? END                                            #searchedCase
     | CAST LEFT_PAREN expression AS type RIGHT_PAREN                                                     #cast
     | TRY_CAST LEFT_PAREN expression AS type RIGHT_PAREN                                                 #cast
     | ARRAY LEFT_BRACKET (expression (COMMA expression)*)? RIGHT_BRACKET                                       #arrayConstructor
