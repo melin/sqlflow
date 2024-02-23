@@ -809,7 +809,7 @@ public class ExpressionAnalyzer {
             Type type = UNKNOWN;
             setExpressionType(node, type);
 
-            for (WhenClause whenClause : node.getWhenClauses()) a{
+            for (WhenClause whenClause : node.getWhenClauses()) {
                 Type whenClauseType = process(whenClause.getResult(), context);
                 setExpressionType(whenClause, whenClauseType);
             }
