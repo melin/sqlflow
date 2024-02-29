@@ -5,7 +5,9 @@ import io.github.melin.sqlflow.tree.*;
 import io.github.melin.sqlflow.tree.expression.*;
 import io.github.melin.sqlflow.tree.join.Join;
 import io.github.melin.sqlflow.tree.relation.QuerySpecification;
+import io.github.melin.sqlflow.tree.relation.Relation;
 import io.github.melin.sqlflow.tree.relation.Table;
+import io.github.melin.sqlflow.tree.relation.Unnest;
 import io.github.melin.sqlflow.tree.statement.Query;
 import io.github.melin.sqlflow.tree.statement.Statement;
 import io.github.melin.sqlflow.tree.window.WindowFrame;
@@ -19,6 +21,7 @@ import javax.annotation.concurrent.Immutable;
 import java.util.*;
 
 import static com.google.common.base.Preconditions.checkArgument;
+import static com.google.common.collect.ImmutableMap.toImmutableMap;
 import static com.google.common.collect.ImmutableSet.toImmutableSet;
 import static java.lang.Boolean.FALSE;
 import static java.lang.String.format;
@@ -49,6 +52,12 @@ public class Analysis {
     private final Map<NodeRef<AllColumns>, List<Field>> selectAllResultFields = new LinkedHashMap<>();
 
     private final Multimap<Field, SourceColumn> originColumnDetails = ArrayListMultimap.create();
+
+    private final Map<NodeRef<Relation>, QualifiedName> relationNames = new LinkedHashMap<>();
+
+    private final Set<NodeRef<Relation>> aliasedRelations = new LinkedHashSet<>();
+
+    private final Map<NodeRef<Unnest>, UnnestAnalysis> unnestAnalysis = new LinkedHashMap<>();
 
     private final Multimap<SourceColumn, NodeLocation> originFields = ArrayListMultimap.create();
 
@@ -168,6 +177,14 @@ public class Analysis {
 
     public Set<SourceColumn> getSourceColumns(Field field) {
         return ImmutableSet.copyOf(originColumnDetails.get(field));
+    }
+
+    public void setRelationName(Relation relation, QualifiedName name) {
+        relationNames.put(NodeRef.of(relation), name);
+    }
+
+    public void addAliased(Relation relation) {
+        aliasedRelations.add(NodeRef.of(relation));
     }
 
     public void addOriginField(SourceColumn sourceColumn, NodeLocation location) {
@@ -303,6 +320,10 @@ public class Analysis {
 
     public JoinUsingAnalysis getJoinUsing(Join node) {
         return joinUsing.get(NodeRef.of(node));
+    }
+
+    public void setUnnest(Unnest node, UnnestAnalysis analysis) {
+        unnestAnalysis.put(NodeRef.of(node), analysis);
     }
 
     public void setWhere(Field field, Expression expression) {
@@ -558,6 +579,30 @@ public class Analysis {
                                     .flatMap(Collection::stream)
                                     .flatMap(Collection::stream))
                     .collect(toImmutableSet());
+        }
+    }
+
+    public static class UnnestAnalysis {
+        private final Map<NodeRef<Expression>, List<Field>> mappings;
+        private final Optional<Field> ordinalityField;
+
+        public UnnestAnalysis(Map<NodeRef<Expression>, List<Field>> mappings, Optional<Field> ordinalityField)
+        {
+            requireNonNull(mappings, "mappings is null");
+            this.mappings = mappings.entrySet().stream()
+                    .collect(toImmutableMap(Map.Entry::getKey, entry -> ImmutableList.copyOf(entry.getValue())));
+
+            this.ordinalityField = requireNonNull(ordinalityField, "ordinalityField is null");
+        }
+
+        public Map<NodeRef<Expression>, List<Field>> getMappings()
+        {
+            return mappings;
+        }
+
+        public Optional<Field> getOrdinalityField()
+        {
+            return ordinalityField;
         }
     }
 

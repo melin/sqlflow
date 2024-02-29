@@ -2,7 +2,6 @@ package io.github.melin.sqlflow.analyzer;
 
 import io.github.melin.sqlflow.AstVisitor;
 import io.github.melin.sqlflow.metadata.*;
-import io.github.melin.sqlflow.metadata.*;
 import io.github.melin.sqlflow.parser.ParsingException;
 import io.github.melin.sqlflow.parser.SqlParser;
 import io.github.melin.sqlflow.tree.*;
@@ -14,20 +13,14 @@ import io.github.melin.sqlflow.tree.join.JoinOn;
 import io.github.melin.sqlflow.tree.join.JoinUsing;
 import io.github.melin.sqlflow.tree.literal.LongLiteral;
 import io.github.melin.sqlflow.tree.relation.*;
-import io.github.melin.sqlflow.tree.relation.*;
 import io.github.melin.sqlflow.tree.statement.*;
 import io.github.melin.sqlflow.tree.window.*;
 import io.github.melin.sqlflow.tree.relation.Table;
-import io.github.melin.sqlflow.tree.statement.*;
-import io.github.melin.sqlflow.tree.window.*;
 import io.github.melin.sqlflow.tree.window.rowPattern.PatternRecognitionRelation;
 import io.github.melin.sqlflow.tree.window.rowPattern.RowPattern;
 import io.github.melin.sqlflow.type.RowType;
 import io.github.melin.sqlflow.type.Type;
 import com.google.common.collect.*;
-import io.github.melin.sqlflow.tree.*;
-import io.github.melin.sqlflow.tree.expression.*;
-import io.github.melin.sqlflow.tree.group.*;
 
 import java.util.*;
 import java.util.function.Predicate;
@@ -436,6 +429,7 @@ public class StatementAnalyzer {
                 List<Field> expressionOutputs = new ArrayList<>();
 
                 ExpressionAnalyzer.analyzeExpression(createScope(scope), analysis, metadataService, sqlParser, expression);
+                expressionOutputs.add(Field.newUnqualified(Optional.empty()));
 
                 outputFields.addAll(expressionOutputs);
                 mappings.put(NodeRef.of(expression), expressionOutputs);
@@ -448,6 +442,7 @@ public class StatementAnalyzer {
 
             ordinalityField.ifPresent(outputFields::add);
 
+            analysis.setUnnest(node, new Analysis.UnnestAnalysis(mappings.buildOrThrow(), ordinalityField));
             return createAndAssignScope(node, scope, outputFields.build());
         }
 
@@ -656,10 +651,17 @@ public class StatementAnalyzer {
 
         @Override
         public Scope visitAliasedRelation(AliasedRelation relation, Optional<Scope> scope) {
+            analysis.setRelationName(relation, QualifiedName.of(ImmutableList.of(relation.getAlias())));
+            analysis.addAliased(relation.getRelation());
             Scope relationScope = process(relation.getRelation(), scope);
+            RelationType relationType = relationScope.getRelationType();
+
+            /*// special-handle table function invocation
+            if (relation.getRelation() instanceof TableFunctionInvocation function) {
+                return createAndAssignScope(relation, scope, aliasTableFunctionInvocation(relation, relationType, function));
+            }*/
 
             // todo this check should be inside of TupleDescriptor.withAlias, but the exception needs the node object
-            RelationType relationType = relationScope.getRelationType();
             if (relation.getColumnNames() != null) {
                 int totalColumns = relationType.getVisibleFieldCount();
                 if (totalColumns != relation.getColumnNames().size()) {
