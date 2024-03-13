@@ -558,8 +558,8 @@ filter
 
 mergeCase
     : WHEN MATCHED (AND condition=expression)? THEN
-        UPDATE SET targets+=identifier EQ values+=expression
-          (COMMA targets+=identifier EQ values+=expression)*                                    #mergeUpdate
+        UPDATE SET targets+=expression EQ values+=expression
+          (COMMA targets+=expression EQ values+=expression)*                                    #mergeUpdate
     | WHEN MATCHED (AND condition=expression)? THEN DELETE                                      #mergeDelete
     | WHEN NOT MATCHED (AND condition=expression)? THEN
         INSERT (LEFT_PAREN targets+=identifier (COMMA targets+=identifier)* RIGHT_PAREN)?
