@@ -244,6 +244,12 @@ sampleType
     | SYSTEM
     ;
 
+trimsSpecification
+    : LEADING
+    | TRAILING
+    | BOTH
+    ;
+
 listAggOverflowBehavior
     : ERROR
     | TRUNCATE string? listaggCountIndication
@@ -462,10 +468,13 @@ primaryExpression
     | name=CURRENT_TIMESTAMP LEFT_PAREN RIGHT_PAREN                                                      #specialDateTimeFunction
     | name=LOCALTIME (LEFT_PAREN precision=INTEGER_VALUE RIGHT_PAREN)?                                   #specialDateTimeFunction
     | name=LOCALTIMESTAMP (LEFT_PAREN precision=INTEGER_VALUE RIGHT_PAREN)?                              #specialDateTimeFunction
-    | name=CURRENT_USER                                                                   #currentUser
-    | name=CURRENT_CATALOG                                                                #currentCatalog
-    | name=CURRENT_SCHEMA                                                                 #currentSchema
-    | name=CURRENT_PATH                                                                   #currentPath
+    | name=CURRENT_USER                                                                                  #currentUser
+    | name=CURRENT_CATALOG                                                                               #currentCatalog
+    | name=CURRENT_SCHEMA                                                                                #currentSchema
+    | name=CURRENT_PATH                                                                                  #currentPath
+    | TRIM '(' (trimsSpecification? trimChar=valueExpression? FROM)?
+            trimSource=valueExpression ')'                                                               #trim
+    | TRIM '(' trimSource=valueExpression ',' trimChar=valueExpression ')'                               #trim
     | SUBSTRING LEFT_PAREN valueExpression FROM valueExpression (FOR valueExpression)? RIGHT_PAREN       #substring
     | NORMALIZE LEFT_PAREN valueExpression (COMMA normalForm)? RIGHT_PAREN                                 #normalize
     | EXTRACT LEFT_PAREN identifier FROM valueExpression RIGHT_PAREN                                     #extract
@@ -660,7 +669,7 @@ nonReserved
  //: YEAR | YEARS | QUARTER | MONTH | MONTHS | WEEK | WEEKS | DAY | DAYS | HOUR | HOURS | MINUTE | MINUTES | SECOND | SECONDS | MILLISECOND | MICROSECOND | NANOSECOND | EPOCH
     // IMPORTANT: this rule must only contain tokens. Nested rules are not supported. See SqlParser.exitNonReserved
     : ANTI | AFTER | ALL | ANY | ARRAY | ASC | AT | ASYMMETRIC
-    | BERNOULLI
+    | BERNOULLI | BOTH
     | COLUMN | COLUMNS | COMMENT | COMMIT | COUNT | CURRENT | COPARTITION | CUMULATE
     | DATA | DATE | DAY | DAYS | DEFINE | DEFINER | DESC | DESCRIPTOR | DISTRIBUTED | DOUBLE | DEFAULT
     | EMPTY | ERROR | EXCLUDING | EPOCH
@@ -670,7 +679,7 @@ nonReserved
     | IF | IGNORE | INCLUDING | INITIAL | INPUT | INTERVAL | INVOKER | IO | ISOLATION
     | JSON
     | KEEP
-    | LAST | LATERAL | LEVEL | LIMIT | LOCAL | LOGICAL
+    | LAST | LATERAL | LEADING | LEVEL | LIMIT | LOCAL | LOGICAL
     | MAP | MATCH | MATCHED | MATCHES | MATCH_RECOGNIZE | MATERIALIZED | MEASURES | MERGE | MINUTE | MINUTES | MONTH | MONTHS | MILLISECOND | MICROSECOND
     | NEXT | NFC | NFD | NFKC | NFKD | NO | NONE | NULLIF | NULLS | NANOSECOND
     | OF | OFFSET | OMIT | ONE | ONLY | OPTION | ORDINALITY | OUTPUT | OVER | OVERFLOW | OVERWRITE
@@ -679,7 +688,7 @@ nonReserved
     | RANGE | READ | REFRESH | RENAME | REPEATABLE | REPLACE | RESET | RESPECT | RESTRICT | ROW | ROWS | RUNNING
     | SECOND | SECONDS | SECURITY | SEEK | SEMI | SET | SETS | SKIP_ | SIZE | STEP | SLIDE | SESSION
     | SHOW | SOME | START | STATS | SUBSET | SUBSTRING | SYSTEM | SYMMETRIC | SIMILAR
-    | TABLES | TABLESAMPLE | TEXT | TIES | TIME | TIMECOL | TIMESTAMP | SYSTEM_TIME | TO | TRUNCATE | TRY_CAST | TUMBLE | TEMPORARY
+    | TABLES | TABLESAMPLE | TEXT | TIES | TIME | TIMECOL | TIMESTAMP | SYSTEM_TIME | TO | TRAILING | TRUNCATE | TRY_CAST | TUMBLE | TEMPORARY
     | UNBOUNDED | UNMATCHED | UPDATE | USE | USER
     | VERSION | VIEW
     | WINDOW | WITHIN | WITHOUT | WEEK | WEEKS
