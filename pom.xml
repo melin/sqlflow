@@ -21,7 +21,7 @@
         <antlr4test.version>1.22</antlr4test.version>
         <jackson.verion>2.15.2</jackson.verion>
         <kotlin.version>1.9.0</kotlin.version>
-        <sql-parser.version>4.0.1</sql-parser.version>
+        <sql-parser.version>4.0.8</sql-parser.version>
     </properties>
 
     <dependencies>
