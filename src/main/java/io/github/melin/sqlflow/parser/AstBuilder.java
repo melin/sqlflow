@@ -589,12 +589,18 @@ public class AstBuilder extends SqlFlowParserBaseVisitor<Node> {
             criteria = new NaturalJoin();
         } else {
             right = (Relation) visit(context.rightRelation);
-            if (context.joinCriteria().ON() != null) {
-                criteria = new JoinOn((Expression) visit(context.joinCriteria().booleanExpression()));
-            } else if (context.joinCriteria().USING() != null) {
-                criteria = new JoinUsing(visit(context.joinCriteria().identifier(), Identifier.class));
+            if (context.joinCriteria() != null) { // hive 存在没有 on 语句
+                if (context.joinCriteria().ON() != null) {
+                    criteria = new JoinOn((Expression) visit(context.joinCriteria().booleanExpression()));
+                } else if (context.joinCriteria().USING() != null) {
+                    criteria = new JoinUsing(visit(context.joinCriteria().identifier(), Identifier.class));
+                } else {
+                    throw new IllegalArgumentException("Unsupported join criteria");
+                }
             } else {
-                throw new IllegalArgumentException("Unsupported join criteria");
+                Expression expression = new ComparisonExpression(ComparisonExpression.Operator.EQUAL,
+                        new Identifier("1"), new Identifier("1"));
+                criteria = new JoinOn(expression);
             }
         }
 
