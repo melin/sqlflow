@@ -15,9 +15,10 @@ class FlinkSqlLineageTest {
     @Throws(Exception::class)
     fun testInsertInto() {
         val sql = """
+            with temp as (select ITEM as PRODUCT_ID, ENRICHMENT_ID from RETEK_XX_ITEM_ATTR_TRANSLATE_PRODUCT_ENRICHMENT a
+            cross join unnest(UDA_ID) AS t (ENRICHMENT_ID))
             INSERT INTO PROCESSED_MDM_PRODUCT_ENRICHMENT(PRODUCT_ID, ENRICHMENT_ID)
-            select ITEM as PRODUCT_ID, ENRICHMENT_ID from RETEK_XX_ITEM_ATTR_TRANSLATE_PRODUCT_ENRICHMENT a
-            cross join unnest(UDA_ID) AS t (ENRICHMENT_ID)
+            select * from TEMP
         """.trimIndent()
         val statement = SQL_PARSER.createStatement(sql)
         val analysis = Analysis(statement, emptyMap())

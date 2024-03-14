@@ -18,6 +18,7 @@ import io.github.melin.sqlflow.tree.QualifiedName;
 import io.github.melin.sqlflow.tree.WithQuery;
 import io.github.melin.sqlflow.tree.expression.Expression;
 import com.google.common.collect.ImmutableMap;
+import org.apache.commons.lang3.StringUtils;
 
 import javax.annotation.concurrent.Immutable;
 import java.util.HashMap;
@@ -282,6 +283,9 @@ public class Scope {
     }
 
     public Optional<WithQuery> getNamedQuery(String name) {
+        if (!caseSensitive) {
+            name = StringUtils.toRootLowerCase(name);
+        }
         if (namedQueries.containsKey(name)) {
             return Optional.of(namedQueries.get(name));
         }
