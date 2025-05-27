@@ -13,8 +13,6 @@ import io.github.melin.sqlflow.tree.statement.Statement;
 import io.github.melin.sqlflow.tree.window.WindowFrame;
 import io.github.melin.sqlflow.type.Type;
 import com.google.common.collect.*;
-import io.github.melin.sqlflow.tree.*;
-import io.github.melin.sqlflow.tree.expression.*;
 
 import javax.annotation.Nullable;
 import javax.annotation.concurrent.Immutable;
@@ -431,10 +429,17 @@ public class Analysis {
     public static class SourceColumn {
         private final QualifiedObjectName tableName;
         private final String columnName;
+        private List<FunctionContent> functions;
 
-        public SourceColumn(QualifiedObjectName tableName, String columnName) {
+        public SourceColumn(QualifiedObjectName tableName, String columnName, FunctionContent function) {
             this.tableName = requireNonNull(tableName, "tableName is null");
             this.columnName = requireNonNull(columnName, "columnName is null");
+            if (function != null) {
+                if (functions == null) {
+                    functions = new ArrayList<>();
+                }
+                this.functions.add(function);
+            }
         }
 
         public QualifiedObjectName getTableName() {
@@ -443,6 +448,19 @@ public class Analysis {
 
         public String getColumnName() {
             return columnName;
+        }
+
+        public List<FunctionContent> getFunctions(){
+            return this.functions;
+        }
+
+        public void addFunction(FunctionContent function) {
+            if (function != null) {
+                if (functions == null) {
+                    functions = new ArrayList<>();
+                }
+                this.functions.add(function);
+            }
         }
 
         @Override

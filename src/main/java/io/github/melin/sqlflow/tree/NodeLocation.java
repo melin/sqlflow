@@ -11,7 +11,7 @@ public final class NodeLocation {
     private final int line;
     private final int column;
     private final int startIndex;
-    private final int stopIndex;
+    private int stopIndex;
 
     public NodeLocation(int line, int column, int startIndex, int stopIndex) {
         checkArgument(line >= 1, "line must be at least one, got: %s", line);
@@ -37,6 +37,10 @@ public final class NodeLocation {
 
     public int getStopIndex() {
         return stopIndex;
+    }
+
+    public void setStopIndex(int stopIndex) {
+        this.stopIndex = stopIndex;
     }
 
     @Override

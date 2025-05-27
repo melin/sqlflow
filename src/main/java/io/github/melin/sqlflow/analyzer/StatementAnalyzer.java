@@ -36,6 +36,7 @@ import static com.google.common.base.Preconditions.*;
 import static com.google.common.collect.ImmutableList.toImmutableList;
 import static com.google.common.collect.ImmutableSet.toImmutableSet;
 import static com.google.common.collect.Iterables.getLast;
+import static java.lang.Math.exp;
 import static java.lang.Math.toIntExact;
 import static java.util.Collections.emptyList;
 import static java.util.Locale.ENGLISH;
@@ -268,7 +269,7 @@ public class StatementAnalyzer {
             for (String column : schemaTable.getColumns()) {
                 Field field = Field.newQualified(table.getName(), Optional.of(column), Optional.of(tableName), Optional.of(column), false);
                 fields.add(field);
-                analysis.addSourceColumns(field, ImmutableSet.of(new Analysis.SourceColumn(tableName, column)));
+                analysis.addSourceColumns(field, ImmutableSet.of(new Analysis.SourceColumn(tableName, column, null)));
             }
             return fields.build();
         }
@@ -345,7 +346,7 @@ public class StatementAnalyzer {
                     Optional.of(column.getName()), Optional.of(name),
                     Optional.of(column.getName()), false)).collect(toImmutableList());
 
-            outputFields.forEach(field -> analysis.addSourceColumns(field, ImmutableSet.of(new Analysis.SourceColumn(name, field.getName().get()))));
+            outputFields.forEach(field -> analysis.addSourceColumns(field, ImmutableSet.of(new Analysis.SourceColumn(name, field.getName().get(), null))));
             return createAndAssignScope(table, scope, outputFields);
         }
 
@@ -1389,11 +1390,77 @@ public class StatementAnalyzer {
                     Optional<QualifiedObjectName> originTable = Optional.empty();
                     Optional<String> originColumn = Optional.empty();
                     QualifiedName name = null;
-
+                    FunctionContent function = null; //主要记录Function名称和location以解析Function内容
                     if (expression instanceof Identifier) {
                         name = QualifiedName.of(((Identifier) expression).getValue());
                     } else if (expression instanceof DereferenceExpression) {
                         name = DereferenceExpression.getQualifiedName((DereferenceExpression) expression);
+                    } else if(expression instanceof FunctionCall) {
+                        final FunctionCall functionCall = (FunctionCall) expression;
+                        final QualifiedName qualifiedName = functionCall.getName();
+                        if (qualifiedName.getOriginalParts() != null && qualifiedName.getOriginalParts().size() > 0) {
+                            function = new FunctionContent(qualifiedName.getOriginalParts().get(0).getValue());
+                            function.setLocation(expression.getLocation().get());
+                        }
+                        final NodeLocation functionLocation = function.getLocation();
+                        functionLocation.setStopIndex(-1); //默认-1,有alias、windows-partitionBy orderBy时候才更新获取到完整的Function位,否则就按照Function括号位置获取
+                        if(functionCall.getWindow().isPresent()){
+                            final Window window = functionCall.getWindow().get();
+                            if (window instanceof WindowSpecification) {
+                                final WindowSpecification windowSpecification = (WindowSpecification) window;
+                                final List<Expression> partitionBy = windowSpecification.getPartitionBy();
+                                for(Expression express : partitionBy) {
+                                    if (express.getLocation().isPresent()) {
+                                        if (express.getLocation().get().getStopIndex() > functionLocation.getStopIndex()) {
+                                            functionLocation.setStopIndex(express.getLocation().get().getStopIndex() + 1);
+                                        }
+                                    }
+                                }
+
+                                if (windowSpecification.getOrderBy().isPresent()) {
+                                    final OrderBy orderBy = windowSpecification.getOrderBy().get();
+                                    if(orderBy.getLocation().isPresent()) {
+                                        if (orderBy.getLocation().get().getStopIndex() > functionLocation.getStopIndex()) {
+                                            functionLocation.setStopIndex(orderBy.getLocation().get().getStopIndex() + 1);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        if (column.getAlias().isPresent()) {
+                            final Optional<NodeLocation> aliasLocationOption = column.getAlias().get().getLocation();
+                            if (aliasLocationOption.isPresent()) {
+                                final NodeLocation aliasLocation = aliasLocationOption.get();
+                                if (aliasLocation.getStopIndex() > functionLocation.getStopIndex()) {
+                                    functionLocation.setStopIndex(aliasLocation.getStopIndex());
+                                }
+                            }
+                        }
+                    } else if(expression instanceof SearchedCaseExpression) {
+                        final SearchedCaseExpression caseExpression = (SearchedCaseExpression) expression;
+                        function = new FunctionContent("case");
+                        function.setLocation(caseExpression.getLocation().get());
+                        //获取case子元素里面最大的stopIndex
+                        final NodeLocation caseLocation = function.getLocation();
+                        final List<? extends Node> children = caseExpression.getChildren();
+                        for(Node child : children) {
+                            final Optional<NodeLocation> childLocation = child.getLocation();
+                            if (childLocation.isPresent()) {
+                                final NodeLocation nodeLocation = childLocation.get();
+                                if (nodeLocation.getStopIndex() > caseLocation.getStopIndex()) {
+                                    caseLocation.setStopIndex(nodeLocation.getStopIndex());
+                                }
+                            }
+                        }
+                        if (column.getAlias().isPresent()) {
+                            final Optional<NodeLocation> aliasLocationOption = column.getAlias().get().getLocation();
+                            if (aliasLocationOption.isPresent()) {
+                                final NodeLocation aliasLocation = aliasLocationOption.get();
+                                if (aliasLocation.getStopIndex() > caseLocation.getStopIndex()) {
+                                    caseLocation.setStopIndex(aliasLocation.getStopIndex());
+                                }
+                            }
+                        }
                     }
 
                     if (name != null) {
@@ -1418,8 +1485,15 @@ public class StatementAnalyzer {
                     // fix join 子查询是union 语句
                     Set<Analysis.SourceColumn> sourceColumns = analysis.getExpressionSourceColumns(expression);
                     if (sourceColumns.isEmpty() && originTable.isPresent()) {
-                        analysis.addSourceColumns(newField, ImmutableSet.of(new Analysis.SourceColumn(originTable.get(), originColumn.get())));
+                        analysis.addSourceColumns(newField, ImmutableSet.of(new Analysis.SourceColumn(originTable.get(), originColumn.get(), function)));
                     } else if (!sourceColumns.isEmpty()) {
+                        if (function != null) {
+                            FunctionContent finalFunctionName = function;
+                            sourceColumns = sourceColumns.stream().map(s -> {
+                                s.addFunction(finalFunctionName);
+                                return s;
+                            }).collect(Collectors.toSet());
+                        }
                         analysis.addSourceColumns(newField, sourceColumns);
                     }
                     outputFields.add(newField);
