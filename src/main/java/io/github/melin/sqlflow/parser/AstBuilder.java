@@ -2081,7 +2081,7 @@ public class AstBuilder extends SqlFlowParserBaseVisitor<Node> {
     public static NodeLocation getLocation(Token token) {
         requireNonNull(token, "token is null");
         return new NodeLocation(token.getLine(), token.getCharPositionInLine() + 1,
-                token.getStartIndex(), token.getTokenIndex());
+                token.getStartIndex(), token.getStopIndex());
     }
 
     private static ParsingException parseError(String message, ParserRuleContext context) {

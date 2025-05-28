@@ -1016,7 +1016,7 @@ public class ExpressionAnalyzer {
         analyzer.getSourceFields().forEach(field -> {
             if (field.getOriginTable().isPresent() && field.getOriginColumnName().isPresent()) {
                 Analysis.SourceColumn sourceColumn = new Analysis.SourceColumn(field.getOriginTable().get(),
-                        field.getOriginColumnName().get());
+                        field.getOriginColumnName().get(), null);
                 analysis.addOriginField(sourceColumn, field.getLocation());
             }
         });
